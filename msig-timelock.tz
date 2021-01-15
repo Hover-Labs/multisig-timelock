@@ -198,59 +198,78 @@ code
         CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : @parameter%execute : @storage
         CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
         SWAP;       # @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
-        GET;        # option (pair timestamp (lambda unit (list operation))) : @storage
+        DUP;        # @parameter%execute : @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
+        DUG 2;      # @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
+        GET;        # option (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
         IF_SOME
           {
-            # of_some: Get-item:150 # @some : @storage
+            # of_some: Get-item:150 # @some : @parameter%execute : @storage
           }
           {
-            PUSH int 150; # int : @storage
+            PUSH int 150; # int : @parameter%execute : @storage
             FAILWITH;   # FAILED
-          }; # @some : @storage
-        DUP;        # @some : @some : @storage
-        CAR;        # timestamp : @some : @storage
-        SWAP;       # @some : timestamp : @storage
-        CDR;        # lambda unit (list operation) : timestamp : @storage
-        # sp.verify(sp.add_seconds(match_pair_151_fst, sp.to_int(self.data.timelock_seconds)) < sp.now, message = 'TOO_EARLY') # lambda unit (list operation) : timestamp : @storage
-        NOW;        # timestamp : lambda unit (list operation) : timestamp : @storage
-        DIG 2;      # timestamp : timestamp : lambda unit (list operation) : @storage
-        DUP;        # timestamp : timestamp : timestamp : lambda unit (list operation) : @storage
-        DUG 3;      # timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        DIG 4;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp
-        DUP;        # @storage : @storage : timestamp : timestamp : lambda unit (list operation) : timestamp
-        DUG 5;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        CDR;        # nat : timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        INT;        # int : timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        ADD;        # timestamp : timestamp : lambda unit (list operation) : timestamp : @storage
-        COMPARE;    # int : lambda unit (list operation) : timestamp : @storage
-        LT;         # bool : lambda unit (list operation) : timestamp : @storage
+          }; # @some : @parameter%execute : @storage
+        DUP;        # @some : @some : @parameter%execute : @storage
+        CAR;        # timestamp : @some : @parameter%execute : @storage
+        SWAP;       # @some : timestamp : @parameter%execute : @storage
+        CDR;        # lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        # sp.verify(sp.add_seconds(match_pair_151_fst, sp.to_int(self.data.timelock_seconds)) < sp.now, message = 'TOO_EARLY') # lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        NOW;        # timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        DIG 2;      # timestamp : timestamp : lambda unit (list operation) : @parameter%execute : @storage
+        DUP;        # timestamp : timestamp : timestamp : lambda unit (list operation) : @parameter%execute : @storage
+        DUG 3;      # timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        DIG 5;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute
+        DUP;        # @storage : @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute
+        DUG 6;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        CDR;        # nat : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        INT;        # int : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        ADD;        # timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        COMPARE;    # int : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+        LT;         # bool : lambda unit (list operation) : timestamp : @parameter%execute : @storage
         IF
           {
-            SWAP;       # timestamp : lambda unit (list operation) : @storage
-            DROP;       # lambda unit (list operation) : @storage
+            SWAP;       # timestamp : lambda unit (list operation) : @parameter%execute : @storage
+            DROP;       # lambda unit (list operation) : @parameter%execute : @storage
           }
           {
-            PUSH string "TOO_EARLY"; # string : lambda unit (list operation) : timestamp : @storage
+            PUSH string "TOO_EARLY"; # string : lambda unit (list operation) : timestamp : @parameter%execute : @storage
             FAILWITH;   # FAILED
-          }; # lambda unit (list operation) : @storage
-        # for op in match_pair_151_snd(sp.unit).rev(): ... # lambda unit (list operation) : @storage
-        NIL operation; # list operation : lambda unit (list operation) : @storage
-        SWAP;       # lambda unit (list operation) : list operation : @storage
-        UNIT;       # unit : lambda unit (list operation) : list operation : @storage
-        EXEC;       # list operation : list operation : @storage
-        NIL operation; # list operation : list operation : list operation : @storage
-        SWAP;       # list operation : list operation : list operation : @storage
+          }; # lambda unit (list operation) : @parameter%execute : @storage
+        # del self.data.timelock[params] # lambda unit (list operation) : @parameter%execute : @storage
+        DIG 2;      # @storage : lambda unit (list operation) : @parameter%execute
+        DUP;        # @storage : @storage : lambda unit (list operation) : @parameter%execute
+        CAR;        # pair (nat %nonce) (list %operator_public_keys key) : @storage : lambda unit (list operation) : @parameter%execute
+        SWAP;       # @storage : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        DUP;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        CAR;        # nat : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        SWAP;       # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        DUP;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        CDR;        # nat : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        SWAP;       # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        NONE (pair timestamp (lambda unit (list operation))); # option (pair timestamp (lambda unit (list operation))) : big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+        DIG 6;      # @parameter%execute : option (pair timestamp (lambda unit (list operation))) : big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+        UPDATE;     # big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+        PAIR;       # pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+        SWAP;       # nat : pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+        PAIR;       # pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+        SWAP;       # pair (nat %nonce) (list %operator_public_keys key) : pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat) : lambda unit (list operation)
+        PAIR;       # pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat)) : lambda unit (list operation)
+        SWAP;       # lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+        # for op in match_pair_151_snd(sp.unit): ... # lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+        NIL operation; # list operation : lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+        SWAP;       # lambda unit (list operation) : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+        UNIT;       # unit : lambda unit (list operation) : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+        EXEC;       # list operation : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
         ITER
           {
-            CONS;       # list operation : list operation : @storage
-          }; # list operation : list operation : @storage
-        ITER
-          {
-            # sp.operations().push(op) # operation : list operation : @storage
-            CONS;       # list operation : @storage
-          }; # list operation : @storage
+            # sp.operations().push(op) # operation : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            CONS;       # list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+          }; # list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
       }; # list operation : pair (pair nat (list key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
     NIL operation; # list operation : list operation : pair (pair nat (list key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
     SWAP;       # list operation : list operation : pair (pair nat (list key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))

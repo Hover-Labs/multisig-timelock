@@ -48,7 +48,7 @@ class MultiSigTimelock(sp.Contract):
    # TODO(keefertaylor): Consistent indentation and casing.
     def __init__(self, 
       signers_threshold = sp.nat(1),
-      timelock_seconds = sp.nat(0),
+      timelock_seconds = sp.nat(60 * 60), # 1 hour
       operator_public_keys = [sp.key("edpkuX2icxnt5krjTJAmNv8uNJNiQtFmDy9Hzj6SF1f6e3NjT4LXKB")]
     ):
         self.init(
@@ -57,7 +57,7 @@ class MultiSigTimelock(sp.Contract):
             operator_public_keys=operator_public_keys,
 
             # Seconds to timelock for.
-            timelock_seconds = sp.nat(60 * 60), # 1 hour
+            timelock_seconds = timelock_seconds,
 
             # Map of <nonce>:<execution request>
             timelock = sp.big_map(
@@ -154,8 +154,13 @@ class MultiSigTimelock(sp.Contract):
         execution_time = timelockToStart.add_seconds(sp.to_int(self.data.timelock_seconds))
         sp.verify(execution_time < sp.now, "TOO_EARLY")
 
+        # Remove item from timelock.
+        del self.data.timelock[nonce]
+
         # Execute request.
-        sp.add_operations(lambdaToExecute(sp.unit).rev())
+        operations = lambdaToExecute(sp.unit)
+        sp.set_type(operations, sp.TList(sp.TOperation))
+        sp.add_operations(operations)
 
     # TODO(keefertaylor): Write a cancel function.
 
@@ -170,9 +175,9 @@ class StoreValueContract(sp.Contract):
     pass
 
   @sp.entry_point
-  def replace(self, params):
+  def replace(self, newValue):
     sp.verify(sp.sender == self.data.admin, "NOT_ADMIN")       
-    self.data.storedValue = params.value
+    self.data.storedValue = newValue
 
 @sp.add_test(name = "addExecutionRequest - succeeds with all signatures")
 def test():
@@ -415,3 +420,209 @@ def test():
       now = now,
       valid = False
     )
+
+@sp.add_test(name = "execute - succeeds after timelock")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig contract with a delay
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  # AND a chain id.
+  chainId = sp.chain_id_cst("0x9caecab9")
+
+  # AND a store value contract with the multisig as the admin.
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # AND a lambda is to update the value
+  # TODO(keefertaylor): enable
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  # AND a payload is correctly signed by 3 parties.
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  #  AND the request is addded to the timelock
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # WHEN execute is called after the timelock.
+  now = now.add_seconds(timelockSeconds * 2)
+  scenario += multiSigContract.execute(nonce).run(
+    now = now
+  )
+
+  # THEN the timelock is cleared
+  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+
+  # AND the value was updated.
+  scenario.verify(storeContract.data.storedValue == newValue)
+
+
+@sp.add_test(name = "execute - fails before timelock")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig contract with a delay
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  # AND a chain id.
+  chainId = sp.chain_id_cst("0x9caecab9")
+
+  # AND a store value contract with the multisig as the admin.
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # AND a lambda is to update the value
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  # AND a payload is correctly signed by 3 parties.
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  #  AND the request is addded to the timelock
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # WHEN execute is called at the same time THEN it fails.
+  scenario += multiSigContract.execute(nonce).run(
+    now = now,
+    valid = False
+  )
+
+@sp.add_test(name = "execute - executes multiple operations in the correct order")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig contract with a delay
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  # AND a chain id.
+  chainId = sp.chain_id_cst("0x9caecab9")
+
+  # AND a store value contract with the multisig as the admin.
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # AND a lambda is to update the value twice.
+  finalValue = sp.nat(2)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([
+      sp.transfer_operation(sp.nat(1), sp.mutez(0), storeContractHandle),
+      sp.transfer_operation(finalValue, sp.mutez(0), storeContractHandle)
+    ])
+
+  # AND a payload is correctly signed by 3 parties.
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  #  AND the request is addded to the timelock
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # WHEN execute is called after the timelock.
+  now = now.add_seconds(timelockSeconds * 2)
+  scenario += multiSigContract.execute(nonce).run(
+    now = now
+  )
+
+  # THEN the timelock is cleared
+  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+
+  # AND the value was updated.
+  scenario.verify(storeContract.data.storedValue == finalValue)  
