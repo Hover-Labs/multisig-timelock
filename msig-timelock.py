@@ -626,3 +626,117 @@ def test():
 
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == finalValue)  
+
+@sp.add_test(name = "execute - able to timelock and execute multiple operations")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig contract with a delay
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  # AND a chain id.
+  chainId = sp.chain_id_cst("0x9caecab9")
+
+  # AND a store value contract with the multisig as the admin.
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # AND two lambdas are provided.
+  lambdaValue1 = sp.nat(1)
+  def updateLambda1(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([
+      sp.transfer_operation(lambdaValue1, sp.mutez(0), storeContractHandle),
+    ])
+
+  lambdaValue2 = sp.nat(2)
+  def updateLambda2(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([
+      sp.transfer_operation(lambdaValue2, sp.mutez(0), storeContractHandle),
+    ])
+
+  # AND lambda1's payload is correctly signed by 3 parties and added to the timelock
+  nonce1 = 1
+  executionRequest = (chainId, (nonce1, updateLambda1))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest1 = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest1).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND lambda2's payload is correctly signed by 3 parties and added to the timelock
+  nonce2 = 2
+  executionRequest = (chainId, (nonce2, updateLambda2))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest2 = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest2).run(
+    chain_id = chainId,
+    now = now
+  )  
+
+  # WHEN lambad1 is executed
+  now = now.add_seconds(timelockSeconds * 2)
+  scenario += multiSigContract.execute(nonce1).run(
+    now = now
+  )
+
+  # THEN the first timelock is executed and the second still exists.
+  scenario.verify(multiSigContract.data.timelock.contains(nonce1) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(nonce2) == True)
+
+  # AND the value was updated.
+  scenario.verify(storeContract.data.storedValue == lambdaValue1)  
+
+  # WHEN lambad2 is executed
+  now = now.add_seconds(timelockSeconds * 2)
+  scenario += multiSigContract.execute(nonce2).run(
+    now = now
+  )
+
+  # THEN the first timelock is executed and the second still exists.
+  scenario.verify(multiSigContract.data.timelock.contains(nonce1) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(nonce2) == False)
+
+  # AND the value was updated.
+  scenario.verify(storeContract.data.storedValue == lambdaValue2)  
+
