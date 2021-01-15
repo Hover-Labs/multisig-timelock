@@ -307,6 +307,122 @@ def test():
   timelockItem = multiSigContract.data.timelock[nonce]
   scenario.verify(sp.fst(timelockItem) == now)
 
+@sp.add_test(name = "addExecutionRequest - fails with bad nonce")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig contract with a threshold of 3/5
+  threshhold = 3
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+  )
+  scenario += multiSigContract
+
+  # AND a chain id.
+  chainId = sp.chain_id_cst("0x9caecab9")
+
+  # AND a store value contract with the multisig as the admin.
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # AND a lambda is to update the value
+  newValue = 1
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  # AND a payload is correctly with a bad nonce
+  nonce = 4 # Obviously wrong.
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  # WHEN the request is sent to the multisignature contract
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+
+  # THEN the call fails.
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now,
+    valid = False
+  )
+
+@sp.add_test(name = "addExecutionRequest - fails with bad chain id")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig contract with a threshold of 3/5
+  threshhold = 3
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+  )
+  scenario += multiSigContract
+
+  # AND a chain id.
+  chainId = sp.chain_id_cst("0x9caecab9")
+
+  # AND a store value contract with the multisig as the admin.
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # AND a lambda is to update the value
+  newValue = 1
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  # AND a payload is correctly signed by 3 parties.
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  # WHEN the request is sent to the multisignature contract with an incorrect chain id
+  # THEN the request fails.
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = sp.chain_id_cst("0x0011223344"),
+    now = now,
+    valid = False
+  )
+
+
 @sp.add_test(name = "addExecutionRequest - fails with less than threshold signatures")
 def test():
   scenario = sp.test_scenario()
