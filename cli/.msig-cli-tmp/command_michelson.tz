@@ -1,1 +1,0 @@
-{ DROP; NIL operation; PUSH address "KT1Hg6cTCKopUMojt899L9mNmXX9xyyJds45"; CONTRACT nat; IF_SOME {} { UNIT; FAILWITH }; PUSH mutez 0; PUSH nat 2; TRANSFER_TOKENS; CONS }

@@ -8,8 +8,9 @@
 import fetch from 'node-fetch'
 import { getLogger, LogLevelDesc } from 'loglevel'
 import { registerFetch, registerLogger } from 'conseiljs'
-import { deployMultisig } from './commands'
+import { bytesToSign, deployMultisig } from './commands'
 import * as commander from 'commander'
+import { OperationData } from './types'
 
 const version = '0.0.1'
 
@@ -18,7 +19,6 @@ program.version(version)
 
 // Global options
 program.option('--debug', 'Print verbose output.')
-program.option('--debug-conseil', 'Prints ConseilJS debug data.')
 
 // Deploy multisig command.
 program
@@ -31,10 +31,10 @@ program
   .requiredOption('--deployer-private-key <string>', "Private key of the deployer, prefixed with edsk.")
   .requiredOption('--node-url <string>', "The URL of the node to use")
   .action(function (commandObject) {
-    const logLevel = program.debug ? "debug" : "info"
-    const conseilLogLevel = program.debugConseil ? 'debug' : 'error'
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
+    // TODO(keefertaylor): Delete and trawl for other console.logs
     console.log("VAL: " + commandObject)
     console.log("VAL: " + commandObject.threshold)
 
@@ -47,6 +47,30 @@ program
       commandObject.nodeUrl,
       commandObject.deployerPrivateKey
     )
+  })
+
+// Obtain bytes to sign.
+program
+  .command('bytes')
+  .description('Get bytes to sign for an operation')
+  .requiredOption('--target-contract <string>', 'The contract to invoke')
+  .requiredOption('--target-entrypoint <string>', 'The entrypoing in the target contract to invoke')
+  .requiredOption('--target-arg <string>', 'The argument, in SmartPy notation (sorry!). Ex: (sp.nat(1), (sp.address("kt1..."), sp.string("arg")))')
+  .requiredOption('--node-url <string>', "The URL of the node to use")
+  .requiredOption('--multisig-address <string>', "The address of the multisig contract.")
+  .option('--nonce <number>', 'The nonce to use, or undefined.')
+  .action(function (commandObject) {
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    initConseil(conseilLogLevel)
+
+    const operation: OperationData = {
+      address: commandObject.targetContract,
+      argSmartPy: commandObject.targetArg,
+      entrypoint: commandObject.targetEntrypoint,
+      amountMutez: 0
+    }
+
+    bytesToSign(operation, commandObject.nodeUrl, commandObject.nonce, commandObject.multisigAddress)
   })
 
 /**

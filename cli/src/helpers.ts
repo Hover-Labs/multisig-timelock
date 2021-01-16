@@ -23,7 +23,10 @@ export const getNonce = async (multiSigContractAddress: address, nodeUrl: url): 
   const multiSigContract = await tezos.contract.at(multiSigContractAddress)
   const multiSigStorage: any = await multiSigContract.storage()
 
-  const nonce: BigNumber = await multiSigStorage.interestIndex
+  console.log("Grabbing a nonce")
+  const nonce: BigNumber = await multiSigStorage.nonce
+  console.log("got: " + nonce)
+
   return nonce.toNumber()
 }
 
@@ -77,8 +80,7 @@ def command(self):
   const compiled = fs.readFileSync(outputFile).toString()
 
   // Cleanup files
-  // TODO(keefertaylor): enable cleanup
-  // fs.rmdirSync(dirName, { recursive: true })
+  fs.rmdirSync(dirName, { recursive: true })
 
   return compiled
 }

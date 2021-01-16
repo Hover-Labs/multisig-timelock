@@ -1,0 +1,2 @@
+msig: KT1MAPZLLp81oLMbWeSgPL8fb7VDBDq3Epcd
+store: KT1BC1RDjV6oc4JxPgUfwk65DN2j4xupZtEa
