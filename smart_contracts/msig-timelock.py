@@ -81,7 +81,7 @@ class MultiSigTimelock(sp.Contract):
       nonce, lambdaToExecute = sp.match_pair(innerPair)
 
       # Verify ChainID
-      sp.verify(chainId == sp.chain_id, "BAD_CHAIN_ID")
+      sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
       
       # Verify Nonce
       sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
@@ -118,7 +118,7 @@ class MultiSigTimelock(sp.Contract):
       nonce, lambdaToExecute = sp.match_pair(innerPair)
 
       # Verify ChainID
-      sp.verify(chainId == sp.chain_id, "BAD_CHAIN_ID")
+      sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
       
       # Verify Nonce
       sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")

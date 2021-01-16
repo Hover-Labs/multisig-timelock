@@ -10,7 +10,7 @@ class Contract(sp.Contract):
     match_pair_114_fst, match_pair_114_snd = sp.match_tuple(params, names = [ "match_pair_114_fst", "match_pair_114_snd" ])
     match_pair_117_fst, match_pair_117_snd = sp.match_tuple(match_pair_114_snd, names = [ "match_pair_117_fst", "match_pair_117_snd" ])
     match_pair_118_fst, match_pair_118_snd = sp.match_tuple(match_pair_117_snd, names = [ "match_pair_118_fst", "match_pair_118_snd" ])
-    sp.verify(match_pair_117_fst == sp.chain_id, message = 'BAD_CHAIN_ID')
+    sp.verify(sp.pack(sp.set_type_expr(match_pair_117_fst, sp.TChainId)) == sp.pack(sp.set_type_expr(sp.chain_id, sp.TChainId)), message = 'BAD_CHAIN_ID')
     sp.verify(match_pair_118_fst == (self.data.nonce + 1), message = 'BAD_NONCE')
     valid_signatures_counter = sp.local("valid_signatures_counter", 0)
     sp.for operator_public_key in self.data.operator_public_keys:

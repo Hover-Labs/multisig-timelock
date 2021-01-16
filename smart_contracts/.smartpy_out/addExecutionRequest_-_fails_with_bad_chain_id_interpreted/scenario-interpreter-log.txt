@@ -3,8 +3,8 @@ Creating contract
  => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractStorage.0.0.tz 1
  => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractStorage.0.0.tz.json 19
  => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractTypes.0.0.txt 5
- => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractCode.0.0.tz 281
- => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractCode.0.0.tz.json 303
+ => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractCode.0.0.tz 283
+ => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractCode.0.0.tz.json 305
  => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testPrettyPrint.0.0.py 31
 Creating contract
  -> (Pair "Contract_0" 0)
@@ -15,4 +15,4 @@ Creating contract
  => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testContractCode.1.1.tz.json 36
  => ./.smartpy_out/addExecutionRequest_-_fails_with_bad_chain_id_interpreted/testPrettyPrint.1.1.py 14
 Executing addExecutionRequest(({sp.reduce(sp.test_account("bob").public_key_hash) : sp.reduce(sp.make_signature(secret_key = sp.reduce(sp.test_account("bob").secret_key), message = sp.pack((sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f0)))), message_format = 'Raw')), sp.reduce(sp.test_account("charlie").public_key_hash) : sp.reduce(sp.make_signature(secret_key = sp.reduce(sp.test_account("charlie").secret_key), message = sp.pack((sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f0)))), message_format = 'Raw')), sp.reduce(sp.test_account("dan").public_key_hash) : sp.reduce(sp.make_signature(secret_key = sp.reduce(sp.test_account("dan").secret_key), message = sp.pack((sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f0)))), message_format = 'Raw'))}, (sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f1)))))...
- -> --- Expected failure in transaction --- WrongCondition in line 121: match_pair_117_fst == sp.chain_id ['BAD_CHAIN_ID']
+ -> --- Expected failure in transaction --- WrongCondition in line 121: sp.pack(sp.set_type_expr(match_pair_117_fst, sp.TChainId)) == sp.pack(sp.set_type_expr(sp.chain_id, sp.TChainId)) ['BAD_CHAIN_ID']
