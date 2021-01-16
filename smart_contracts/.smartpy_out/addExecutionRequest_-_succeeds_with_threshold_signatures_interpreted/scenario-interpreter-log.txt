@@ -1,0 +1,24 @@
+Creating contract
+ -> (Pair (Pair 0 {"edpkv3w95AcgCWQeoYm5szaEqXX71JkZ261s4wjH1NYRtibX879rDv"; "edpkvHmY5Hnqp4ffrSHUjnBNUHmFXCfh4qQDs2mtH2XZBb6N9BA95R"; "edpkuhrfeWnjBZ5pHiNQVgVYDahHs6JWrvpCMueTeJSFS3A7227Krt"; "edpkvQr18UYqhZ4EvbJwUufF8o54EK7RiumFHbymoxJRYtXHAXf7h2"; "edpku1EFLTjrKTzZXVDpw6CuJJDbZAXRdiF53B314cikwPN2ukUDA2"}) (Pair 3 (Pair {} 3600)))
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractStorage.0.0.tz 1
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractStorage.0.0.tz.json 19
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractTypes.0.0.txt 5
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractCode.0.0.tz 281
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractCode.0.0.tz.json 303
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testPrettyPrint.0.0.py 31
+Creating contract
+ -> (Pair "Contract_0" 0)
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractStorage.1.1.tz 1
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractStorage.1.1.tz.json 1
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractTypes.1.1.txt 5
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractCode.1.1.tz 37
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testContractCode.1.1.tz.json 36
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testPrettyPrint.1.1.py 14
+Executing addExecutionRequest(({sp.reduce(sp.test_account("bob").public_key_hash) : sp.reduce(sp.make_signature(secret_key = sp.reduce(sp.test_account("bob").secret_key), message = sp.pack((sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f0)))), message_format = 'Raw')), sp.reduce(sp.test_account("charlie").public_key_hash) : sp.reduce(sp.make_signature(secret_key = sp.reduce(sp.test_account("charlie").secret_key), message = sp.pack((sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f0)))), message_format = 'Raw')), sp.reduce(sp.test_account("dan").public_key_hash) : sp.reduce(sp.make_signature(secret_key = sp.reduce(sp.test_account("dan").secret_key), message = sp.pack((sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f0)))), message_format = 'Raw'))}, (sp.chain_id('0x9caecab9'), (1, sp.build_lambda(f1)))))...
+ -> (Pair (Pair 1 {"edpkv3w95AcgCWQeoYm5szaEqXX71JkZ261s4wjH1NYRtibX879rDv"; "edpkvHmY5Hnqp4ffrSHUjnBNUHmFXCfh4qQDs2mtH2XZBb6N9BA95R"; "edpkuhrfeWnjBZ5pHiNQVgVYDahHs6JWrvpCMueTeJSFS3A7227Krt"; "edpkvQr18UYqhZ4EvbJwUufF8o54EK7RiumFHbymoxJRYtXHAXf7h2"; "edpku1EFLTjrKTzZXVDpw6CuJJDbZAXRdiF53B314cikwPN2ukUDA2"}) (Pair 3 (Pair {Elt 1 (Pair "123" { DROP; NIL operation; PUSH address "Contract_1"; CONTRACT %replace nat; IF_SOME {} { UNIT; FAILWITH }; PUSH mutez 0; PUSH nat 1; TRANSFER_TOKENS; CONS })} 3600)))
+Verifying sp.contract_data(0).timelock.contains(1)...
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testVerify.3.tz 25
+ OK
+Verifying sp.fst(sp.contract_data(0).timelock[1]) == sp.timestamp(123)...
+ => ./.smartpy_out/addExecutionRequest_-_succeeds_with_threshold_signatures_interpreted/testVerify.4.tz 38
+ OK

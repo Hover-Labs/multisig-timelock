@@ -1,0 +1,38 @@
+parameter (pair (pair %k0 (pair (nat %nonce) (list %operator_public_keys key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))) (pair %k1 (address %admin) (int %storedValue)));
+storage   unit;
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    # == verify ==
+    # sp.verify(sp.fst(params.k0.timelock[1]) == sp.timestamp(123)) # @parameter : @storage
+    CAR;        # pair (pair (nat %nonce) (list %operator_public_keys key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : @storage
+    CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : @storage
+    CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : @storage
+    CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : @storage
+    PUSH timestamp "123"; # timestamp : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
+    SWAP;       # big_map nat (pair timestamp (lambda unit (list operation))) : timestamp : @storage
+    PUSH nat 1; # nat : big_map nat (pair timestamp (lambda unit (list operation))) : timestamp : @storage
+    GET;        # option (pair timestamp (lambda unit (list operation))) : timestamp : @storage
+    IF_SOME
+      {
+        # of_some: Get-item:307 # @some : timestamp : @storage
+      }
+      {
+        PUSH int 307; # int : timestamp : @storage
+        FAILWITH;   # FAILED
+      }; # @some : timestamp : @storage
+    CAR;        # timestamp : timestamp : @storage
+    COMPARE;    # int : @storage
+    EQ;         # bool : @storage
+    IF
+      {}
+      {
+        PUSH string "WrongCondition: sp.fst(params.k0.timelock[1]) == sp.timestamp(123)"; # string : @storage
+        FAILWITH;   # FAILED
+      }; # @storage
+    NIL operation; # list operation : @storage
+    PAIR;       # pair (list operation) @storage
+  };

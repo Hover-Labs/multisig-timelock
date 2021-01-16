@@ -1,0 +1,1 @@
+sp.TLambda(unknown, sp.TList(sp.TOperation))
