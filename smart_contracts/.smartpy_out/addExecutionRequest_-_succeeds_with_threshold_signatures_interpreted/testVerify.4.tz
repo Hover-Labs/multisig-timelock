@@ -18,10 +18,10 @@ code
     GET;        # option (pair timestamp (lambda unit (list operation))) : timestamp : @storage
     IF_SOME
       {
-        # of_some: Get-item:307 # @some : timestamp : @storage
+        # of_some: Get-item:269 # @some : timestamp : @storage
       }
       {
-        PUSH int 307; # int : timestamp : @storage
+        PUSH int 269; # int : timestamp : @storage
         FAILWITH;   # FAILED
       }; # @some : timestamp : @storage
     CAR;        # timestamp : timestamp : @storage

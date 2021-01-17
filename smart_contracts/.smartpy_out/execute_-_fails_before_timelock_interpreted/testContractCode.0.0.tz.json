@@ -42,7 +42,7 @@
           {
             "prim": "pair",
             "args": [
-              { "prim": "map", "args": [ { "prim": "key_hash" }, { "prim": "signature" } ] },
+              { "prim": "map", "args": [ { "prim": "key" }, { "prim": "signature" } ] },
               {
                 "prim": "pair",
                 "args": [
@@ -123,7 +123,6 @@
                     { "prim": "SWAP" },
                     { "prim": "DUP" },
                     { "prim": "DUG", "args": [ { "int": "2" } ] },
-                    { "prim": "HASH_KEY" },
                     { "prim": "MEM" },
                     {
                       "prim": "IF",
@@ -139,12 +138,13 @@
                           { "prim": "DIG", "args": [ { "int": "2" } ] },
                           { "prim": "DUP" },
                           { "prim": "DUG", "args": [ { "int": "3" } ] },
-                          { "prim": "HASH_KEY" },
                           { "prim": "GET" },
-                          { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "132" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                          { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "94" } ] }, { "prim": "FAILWITH" } ], [] ] },
                           { "prim": "DIG", "args": [ { "int": "2" } ] },
                           { "prim": "CHECK_SIGNATURE" },
-                          { "prim": "IF", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "nat" }, { "int": "1" } ] }, { "prim": "ADD" } ], [] ] }
+                          { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "BAD_SIGNATURE" } ] }, { "prim": "FAILWITH" } ] ] },
+                          { "prim": "PUSH", "args": [ { "prim": "nat" }, { "int": "1" } ] },
+                          { "prim": "ADD" }
                         ],
                         [ { "prim": "DROP" } ]
                       ]
@@ -234,7 +234,7 @@
               { "prim": "DUP" },
               { "prim": "DUG", "args": [ { "int": "2" } ] },
               { "prim": "GET" },
-              { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "150" } ] }, { "prim": "FAILWITH" } ], [] ] },
+              { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "112" } ] }, { "prim": "FAILWITH" } ], [] ] },
               { "prim": "DUP" },
               { "prim": "CAR" },
               { "prim": "SWAP" },

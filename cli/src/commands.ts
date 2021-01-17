@@ -1,7 +1,7 @@
 import Utils from './utils'
 import { OperationData, url, address, publicKey } from './types'
 import { getChainId, getNonce, compileCommand, loadContract, deployContract } from './helpers'
-import { TezosParameterFormat, TezosNodeReader, TezosNodeWriter } from 'conseiljs'
+import { TezosParameterFormat, TezosNodeReader, TezosNodeWriter, TezosMessageUtils } from 'conseiljs'
 import OperationFeeEstimator from './operation-fee-estimator'
 import Constants from './constants'
 
@@ -20,20 +20,31 @@ const CONTRACT_SOURCE = __dirname + "/../../smart_contracts/msig-timelock.tz"
  */
 export const bytesToSign = async (operation: OperationData, nodeUrl: url, nonce: number | undefined, multiSigContractAddress: address) => {
   const chainId = await getChainId(nodeUrl)
-  const actualNonce = nonce ?? await getNonce(multiSigContractAddress, nodeUrl)
+  const actualNonce = nonce ?? (await getNonce(multiSigContractAddress, nodeUrl) + 1)
 
   const lambda = await compileCommand(operation)
   const michelson = `Pair "${chainId}" (Pair ${actualNonce} ${lambda})`
-  Utils.print(`Encoding Michelson: ${michelson}`)
 
+  Utils.print('Data to encode')
+  Utils.print(`Pair "${chainId}" (Pair ${actualNonce} ${lambda})'`)
+  Utils.print(``)
 
-  const cli = `tezos-client hash data 'Pair "${chainId}" (Pair ${nonce} ${lambda})' of type 'pair (chain_id) (pair (nat) (lambda unit (list operation)))'`
-  Utils.print("Get bytes with: ")
-  Utils.print(cli)
+  Utils.print('Encode bytes with: ')
+  Utils.print(`tezos-client hash data 'Pair "${chainId}" (Pair ${actualNonce} ${lambda})' of type 'pair chain_id (pair nat (lambda unit (list operation)))'`)
+  Utils.print('')
 
-  // TODO(keefertaylor): Enable, someday.
-  // const hex = TezosMessageUtils.writePackedData(michelson, "pair (chain_id) (pair (nat) (lambda unit (list operation)))", TezosParameterFormat.Michelson)
-  // Utils.print(`Bytes to sign: ${hex}`)
+  const hex = TezosMessageUtils.writePackedData(michelson, "pair (chain_id) (pair (nat) (lambda unit (list operation)))", TezosParameterFormat.Michelson)
+  Utils.print(`[Experimental] I tried to encode the bytes myself. Here is what I came up with: `)
+  Utils.print(hex)
+  Utils.print('')
+
+  Utils.print(`Verify these bytes with: `)
+  Utils.print(`tezos-client unpack michelson data  0x<BYTES>`)
+  Utils.print('')
+
+  Utils.print(`Sign these bytes with: `)
+  Utils.print(`tezos-client sign bytes  0x<BYTES> for <KEY>`)
+  Utils.print('')
 }
 
 /**
@@ -56,13 +67,13 @@ export const deployMultisig = async (timelockSeconds: number, threshold: number,
 
   // Formulate initial storage. 
   // Note: 0 literal is a nonce.
-  const storage = `(Pair (Pair 0 {"edpkuX2icxnt5krjTJAmNv8uNJNiQtFmDy9Hzj6SF1f6e3NjT4LXKB"}) (Pair 1 (Pair {} 3600)))` //`(Pair (Pair 0 {${michelsonPublicKeyList}}) (Pair ${threshold} (Pair {} ${timelockSeconds})))`
+  const storage = `(Pair(Pair 0 { ${michelsonPublicKeyList}}) (Pair ${threshold} (Pair { } ${timelockSeconds})))`
 
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
-  Utils.print(`Deploying from: ${keyStore.publicKeyHash}`)
-  Utils.print(`Storage: ${storage}`)
+  Utils.print(`Deploying from: ${keyStore.publicKeyHash} `)
+  Utils.print(`Storage: ${storage} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
@@ -81,8 +92,8 @@ export const deployMultisig = async (timelockSeconds: number, threshold: number,
   )
 
   Utils.print(`Deployed!`)
-  Utils.print(`Address: ${deployResult.contractAddress}`)
-  Utils.print(`Operation Hash: ${deployResult.operationHash}`)
+  Utils.print(`Address: ${deployResult.contractAddress} `)
+  Utils.print(`Operation Hash: ${deployResult.operationHash} `)
 }
 
 
@@ -110,8 +121,8 @@ export const submit = async (
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
-  Utils.print(`Submitting command from command from: ${keyStore.publicKeyHash}`)
-  Utils.print(`Using nonce: ${nonce}`)
+  Utils.print(`Submitting command from command from: ${keyStore.publicKeyHash} `)
+  Utils.print(`Using nonce: ${nonce} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
@@ -131,9 +142,16 @@ export const submit = async (
     signaturesMap += `Elt "${address}" "${signature}"; `
   }
 
-  const param = `Pair ${signaturesMap} (Pair "${chainId}" (Pair ${nonce} ${lambda}))`
+  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${nonce} ${lambda}))`
+  Utils.print("Invoking with param: " + param)
+  Utils.print('')
 
+  Utils.print(`I will try to invoke the operation but it will likely fail.`)
+  Utils.print(`Use tezos-client to submit the operation manually.`)
+  Utils.print(`tezos-client transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'addExecutionRequest'`)
+  Utils.print('')
 
+  Utils.print(`Attempting to inject automatically:`)
   const operation = TezosNodeWriter.constructContractInvocationOperation(
     keyStore.publicKeyHash,
     counter + 1,
@@ -142,8 +160,8 @@ export const submit = async (
     0,
     Constants.storageLimit,
     Constants.gasLimit,
-    'execute',
-    `${nonce}`,
+    'addExecutionRequest',
+    `${param} `,
     TezosParameterFormat.Michelson,
   )
 
@@ -161,7 +179,7 @@ export const submit = async (
   )
 
   const hash = nodeResult.operationGroupID.replace(/"/g, '')
-  Utils.print(`Executed with hash: ${hash}`)
+  Utils.print(`Executed with hash: ${hash} `)
 }
 
 /**
@@ -176,8 +194,8 @@ export const executeCommand = async (nonce: number, multiSigContractAddress: add
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
-  Utils.print(`Sending execute command from: ${keyStore.publicKeyHash}`)
-  Utils.print(`Using nonce: ${nonce}`)
+  Utils.print(`Sending execute command from: ${keyStore.publicKeyHash} `)
+  Utils.print(`Using nonce: ${nonce} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
@@ -195,7 +213,7 @@ export const executeCommand = async (nonce: number, multiSigContractAddress: add
     Constants.storageLimit,
     Constants.gasLimit,
     'execute',
-    `${nonce}`,
+    `${nonce} `,
     TezosParameterFormat.Michelson,
   )
 
@@ -213,5 +231,5 @@ export const executeCommand = async (nonce: number, multiSigContractAddress: add
   )
 
   const hash = nodeResult.operationGroupID.replace(/"/g, '')
-  Utils.print(`Executed with hash: ${hash}`)
+  Utils.print(`Executed with hash: ${hash} `)
 }
