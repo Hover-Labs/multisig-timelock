@@ -1,4 +1,0 @@
-Storage: sp.TRecord(admin = sp.TAddress, storedValue = sp.TNat).layout(("admin", "storedValue"))
-Params: sp.TVariant(default = sp.TUnit, replace = sp.TNat).layout(("default", "replace"))
-Globals:
-Views:
