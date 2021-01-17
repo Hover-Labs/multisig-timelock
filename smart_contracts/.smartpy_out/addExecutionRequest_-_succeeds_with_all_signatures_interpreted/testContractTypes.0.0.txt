@@ -1,4 +1,0 @@
-Storage: sp.TRecord(nonce = sp.TNat, operator_public_keys = sp.TList(sp.TKey), signers_threshold = sp.TNat, timelock = sp.TBigMap(sp.TNat, sp.TPair(sp.TTimestamp, sp.TLambda(sp.TUnit, sp.TList(sp.TOperation)))), timelock_seconds = sp.TNat).layout((("nonce", "operator_public_keys"), ("signers_threshold", ("timelock", "timelock_seconds"))))
-Params: sp.TVariant(addExecutionRequest = sp.TPair(sp.TMap(sp.TKeyHash, sp.TSignature), sp.TPair(sp.TChainId, sp.TPair(sp.TNat, sp.TLambda(sp.TUnit, sp.TList(sp.TOperation))))), execute = sp.TNat).layout(("addExecutionRequest", "execute"))
-Globals:
-Views:
