@@ -1,4 +1,4 @@
-parameter (or (pair %addExecutionRequest (map key_hash signature) (pair chain_id (pair nat (lambda unit (list operation))))) (nat %execute));
+parameter (or (pair %addExecutionRequest (map key_hash signature) (pair chain_id (pair nat (lambda unit (list operation))))) (or (nat %execute) (pair %rotateKeys (map key_hash signature) (pair chain_id (pair nat (pair nat (list key)))))));
 storage   (pair (pair (nat %nonce) (list %operator_public_keys key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))));
 code
   {
@@ -193,86 +193,272 @@ code
         NIL operation; # list operation : pair (pair nat (list key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
       }
       {
-        SWAP;       # @storage : @parameter%execute
-        # == execute ==
-        # match_pair_126_fst, match_pair_126_snd = sp.match_tuple(self.data.timelock[params], names = [ "match_pair_126_fst", "match_pair_126_snd" ]) # @storage : @parameter%execute
-        DUP;        # @storage : @storage : @parameter%execute
-        DUG 2;      # @storage : @parameter%execute : @storage
-        CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : @parameter%execute : @storage
-        CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : @parameter%execute : @storage
-        CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
-        SWAP;       # @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
-        DUP;        # @parameter%execute : @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
-        DUG 2;      # @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
-        GET;        # option (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
-        IF_SOME
+        IF_LEFT
           {
-            # of_some: Get-item:125 # @some : @parameter%execute : @storage
+            SWAP;       # @storage : @parameter%execute
+            # == execute ==
+            # match_pair_165_fst, match_pair_165_snd = sp.match_tuple(self.data.timelock[params], names = [ "match_pair_165_fst", "match_pair_165_snd" ]) # @storage : @parameter%execute
+            DUP;        # @storage : @storage : @parameter%execute
+            DUG 2;      # @storage : @parameter%execute : @storage
+            CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : @parameter%execute : @storage
+            CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : @parameter%execute : @storage
+            CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
+            SWAP;       # @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
+            DUP;        # @parameter%execute : @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @storage
+            DUG 2;      # @parameter%execute : big_map nat (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
+            GET;        # option (pair timestamp (lambda unit (list operation))) : @parameter%execute : @storage
+            IF_SOME
+              {
+                # of_some: Get-item:164 # @some : @parameter%execute : @storage
+              }
+              {
+                PUSH int 164; # int : @parameter%execute : @storage
+                FAILWITH;   # FAILED
+              }; # @some : @parameter%execute : @storage
+            DUP;        # @some : @some : @parameter%execute : @storage
+            CAR;        # timestamp : @some : @parameter%execute : @storage
+            SWAP;       # @some : timestamp : @parameter%execute : @storage
+            CDR;        # lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            # sp.verify(sp.add_seconds(match_pair_165_fst, sp.to_int(self.data.timelock_seconds)) < sp.now, message = 'TOO_EARLY') # lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            NOW;        # timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            DIG 2;      # timestamp : timestamp : lambda unit (list operation) : @parameter%execute : @storage
+            DUP;        # timestamp : timestamp : timestamp : lambda unit (list operation) : @parameter%execute : @storage
+            DUG 3;      # timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            DIG 5;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute
+            DUP;        # @storage : @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute
+            DUG 6;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            CDR;        # nat : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            INT;        # int : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            ADD;        # timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            COMPARE;    # int : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            LT;         # bool : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+            IF
+              {
+                SWAP;       # timestamp : lambda unit (list operation) : @parameter%execute : @storage
+                DROP;       # lambda unit (list operation) : @parameter%execute : @storage
+              }
+              {
+                PUSH string "TOO_EARLY"; # string : lambda unit (list operation) : timestamp : @parameter%execute : @storage
+                FAILWITH;   # FAILED
+              }; # lambda unit (list operation) : @parameter%execute : @storage
+            # del self.data.timelock[params] # lambda unit (list operation) : @parameter%execute : @storage
+            DIG 2;      # @storage : lambda unit (list operation) : @parameter%execute
+            DUP;        # @storage : @storage : lambda unit (list operation) : @parameter%execute
+            CAR;        # pair (nat %nonce) (list %operator_public_keys key) : @storage : lambda unit (list operation) : @parameter%execute
+            SWAP;       # @storage : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            DUP;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            CAR;        # nat : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            SWAP;       # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            DUP;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            CDR;        # nat : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            SWAP;       # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            NONE (pair timestamp (lambda unit (list operation))); # option (pair timestamp (lambda unit (list operation))) : big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
+            DIG 6;      # @parameter%execute : option (pair timestamp (lambda unit (list operation))) : big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+            UPDATE;     # big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+            PAIR;       # pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+            SWAP;       # nat : pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+            PAIR;       # pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
+            SWAP;       # pair (nat %nonce) (list %operator_public_keys key) : pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat) : lambda unit (list operation)
+            PAIR;       # pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat)) : lambda unit (list operation)
+            SWAP;       # lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            # for op in match_pair_165_snd(sp.unit): ... # lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            NIL operation; # list operation : lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            SWAP;       # lambda unit (list operation) : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            UNIT;       # unit : lambda unit (list operation) : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            EXEC;       # list operation : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            ITER
+              {
+                # sp.operations().push(op) # operation : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+                CONS;       # list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+              }; # list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
           }
           {
-            PUSH int 125; # int : @parameter%execute : @storage
-            FAILWITH;   # FAILED
-          }; # @some : @parameter%execute : @storage
-        DUP;        # @some : @some : @parameter%execute : @storage
-        CAR;        # timestamp : @some : @parameter%execute : @storage
-        SWAP;       # @some : timestamp : @parameter%execute : @storage
-        CDR;        # lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        # sp.verify(sp.add_seconds(match_pair_126_fst, sp.to_int(self.data.timelock_seconds)) < sp.now, message = 'TOO_EARLY') # lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        NOW;        # timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        DIG 2;      # timestamp : timestamp : lambda unit (list operation) : @parameter%execute : @storage
-        DUP;        # timestamp : timestamp : timestamp : lambda unit (list operation) : @parameter%execute : @storage
-        DUG 3;      # timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        DIG 5;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute
-        DUP;        # @storage : @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute
-        DUG 6;      # @storage : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        CDR;        # nat : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        INT;        # int : timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        ADD;        # timestamp : timestamp : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        COMPARE;    # int : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        LT;         # bool : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-        IF
-          {
-            SWAP;       # timestamp : lambda unit (list operation) : @parameter%execute : @storage
-            DROP;       # lambda unit (list operation) : @parameter%execute : @storage
-          }
-          {
-            PUSH string "TOO_EARLY"; # string : lambda unit (list operation) : timestamp : @parameter%execute : @storage
-            FAILWITH;   # FAILED
-          }; # lambda unit (list operation) : @parameter%execute : @storage
-        # del self.data.timelock[params] # lambda unit (list operation) : @parameter%execute : @storage
-        DIG 2;      # @storage : lambda unit (list operation) : @parameter%execute
-        DUP;        # @storage : @storage : lambda unit (list operation) : @parameter%execute
-        CAR;        # pair (nat %nonce) (list %operator_public_keys key) : @storage : lambda unit (list operation) : @parameter%execute
-        SWAP;       # @storage : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        DUP;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        CAR;        # nat : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        SWAP;       # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        DUP;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        CDR;        # nat : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        SWAP;       # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        CAR;        # big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        NONE (pair timestamp (lambda unit (list operation))); # option (pair timestamp (lambda unit (list operation))) : big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation) : @parameter%execute
-        DIG 6;      # @parameter%execute : option (pair timestamp (lambda unit (list operation))) : big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
-        UPDATE;     # big_map nat (pair timestamp (lambda unit (list operation))) : nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
-        PAIR;       # pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat : nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
-        SWAP;       # nat : pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
-        PAIR;       # pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat) : pair (nat %nonce) (list %operator_public_keys key) : lambda unit (list operation)
-        SWAP;       # pair (nat %nonce) (list %operator_public_keys key) : pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat) : lambda unit (list operation)
-        PAIR;       # pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat)) : lambda unit (list operation)
-        SWAP;       # lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-        # for op in match_pair_126_snd(sp.unit): ... # lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-        NIL operation; # list operation : lambda unit (list operation) : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-        SWAP;       # lambda unit (list operation) : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-        UNIT;       # unit : lambda unit (list operation) : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-        EXEC;       # list operation : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-        ITER
-          {
-            # sp.operations().push(op) # operation : list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
-            CONS;       # list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
+            # == rotateKeys ==
+            # match_pair_126_fst, match_pair_126_snd = sp.match_tuple(params, names = [ "match_pair_126_fst", "match_pair_126_snd" ]) # @parameter%rotateKeys : @storage
+            DUP;        # @parameter%rotateKeys : @parameter%rotateKeys : @storage
+            DUP;        # @parameter%rotateKeys : @parameter%rotateKeys : @parameter%rotateKeys : @storage
+            CAR;        # map key_hash signature : @parameter%rotateKeys : @parameter%rotateKeys : @storage
+            SWAP;       # @parameter%rotateKeys : map key_hash signature : @parameter%rotateKeys : @storage
+            CDR;        # pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # match_pair_129_fst, match_pair_129_snd = sp.match_tuple(match_pair_126_snd, names = [ "match_pair_129_fst", "match_pair_129_snd" ]) # pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUP;        # pair chain_id (pair nat (pair nat (list key))) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUP;        # pair chain_id (pair nat (pair nat (list key))) : pair chain_id (pair nat (pair nat (list key))) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CAR;        # chain_id : pair chain_id (pair nat (pair nat (list key))) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            SWAP;       # pair chain_id (pair nat (pair nat (list key))) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CDR;        # pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # match_pair_130_fst, match_pair_130_snd = sp.match_tuple(match_pair_129_snd, names = [ "match_pair_130_fst", "match_pair_130_snd" ]) # pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUP;        # pair nat (pair nat (list key)) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUP;        # pair nat (pair nat (list key)) : pair nat (pair nat (list key)) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CAR;        # nat : pair nat (pair nat (list key)) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            SWAP;       # pair nat (pair nat (list key)) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CDR;        # pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # sp.verify(sp.pack(sp.set_type_expr(match_pair_129_fst, sp.TChainId)) == sp.pack(sp.set_type_expr(sp.chain_id, sp.TChainId)), message = 'BAD_CHAIN_ID') # pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CHAIN_ID;   # chain_id : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            PACK;       # bytes : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DIG 4;      # chain_id : bytes : pair nat (list key) : nat : pair nat (pair nat (list key)) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUP;        # chain_id : chain_id : bytes : pair nat (list key) : nat : pair nat (pair nat (list key)) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUG 5;      # chain_id : bytes : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            PACK;       # bytes : bytes : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            COMPARE;    # int : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            EQ;         # bool : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            IF
+              {}
+              {
+                PUSH string "BAD_CHAIN_ID"; # string : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                FAILWITH;   # FAILED
+              }; # pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # sp.verify(match_pair_130_fst == (self.data.nonce + 1), message = 'BAD_NONCE') # pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            PUSH nat 1; # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DIG 8;      # @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys
+            DUP;        # @storage : @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys
+            DUG 9;      # @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CAR;        # pair (nat %nonce) (list %operator_public_keys key) : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CAR;        # nat : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            ADD;        # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DIG 2;      # nat : nat : pair nat (list key) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUP;        # nat : nat : nat : pair nat (list key) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DUG 3;      # nat : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            COMPARE;    # int : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            EQ;         # bool : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            IF
+              {}
+              {
+                PUSH string "BAD_NONCE"; # string : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                FAILWITH;   # FAILED
+              }; # pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # valid_signatures_counter = sp.local("valid_signatures_counter", 0) # pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            PUSH nat 0; # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # for operator_public_key in self.data.operator_public_keys: ... # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DIG 8;      # @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys
+            DUP;        # @storage : @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys
+            DUG 9;      # @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CAR;        # pair (nat %nonce) (list %operator_public_keys key) : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CDR;        # list key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            ITER
+              {
+                # if match_pair_126_fst.contains(sp.hash_key(operator_public_key)): # key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                DIG 7;      # map key_hash signature : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : @parameter%rotateKeys : @storage
+                DUP;        # map key_hash signature : map key_hash signature : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : @parameter%rotateKeys : @storage
+                DUG 8;      # map key_hash signature : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                SWAP;       # key : map key_hash signature : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                DUP;        # key : key : map key_hash signature : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                DUG 2;      # key : map key_hash signature : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                HASH_KEY;   # key_hash : map key_hash signature : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                MEM;        # bool : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                IF
+                  {
+                    # sp.verify(sp.check_signature(operator_public_key, match_pair_126_fst[sp.hash_key(operator_public_key)], sp.pack(match_pair_126_snd)), message = 'BAD_SIGNATURE') # key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    DIG 6;      # pair chain_id (pair nat (pair nat (list key))) : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : map key_hash signature : @parameter%rotateKeys : @storage
+                    DUP;        # pair chain_id (pair nat (pair nat (list key))) : pair chain_id (pair nat (pair nat (list key))) : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : map key_hash signature : @parameter%rotateKeys : @storage
+                    DUG 7;      # pair chain_id (pair nat (pair nat (list key))) : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    PACK;       # bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    DIG 8;      # map key_hash signature : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : @parameter%rotateKeys : @storage
+                    DUP;        # map key_hash signature : map key_hash signature : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : @parameter%rotateKeys : @storage
+                    DUG 9;      # map key_hash signature : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    DIG 2;      # key : map key_hash signature : bytes : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    DUP;        # key : key : map key_hash signature : bytes : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    DUG 3;      # key : map key_hash signature : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    HASH_KEY;   # key_hash : map key_hash signature : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    GET;        # option signature : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    IF_SOME
+                      {
+                        # of_some: Get-item:144 # @some : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                      }
+                      {
+                        PUSH int 144; # int : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                        FAILWITH;   # FAILED
+                      }; # @some : bytes : key : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    DIG 2;      # key : @some : bytes : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    CHECK_SIGNATURE; # bool : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    IF
+                      {}
+                      {
+                        PUSH string "BAD_SIGNATURE"; # string : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                        FAILWITH;   # FAILED
+                      }; # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    # valid_signatures_counter.value += 1 # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    PUSH nat 1; # nat : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                    ADD;        # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                  }
+                  {
+                    DROP;       # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                  }; # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+              }; # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            # sp.verify(valid_signatures_counter.value >= self.data.signers_threshold, message = 'TOO_FEW_SIGS') # nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            DIG 8;      # @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys
+            DUP;        # @storage : @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys
+            DUG 9;      # @storage : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            CAR;        # nat : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            SWAP;       # nat : nat : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            COMPARE;    # int : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            GE;         # bool : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+            IF
+              {
+                SWAP;       # nat : pair nat (list key) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                DROP;       # pair nat (list key) : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                SWAP;       # pair nat (pair nat (list key)) : pair nat (list key) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                DROP;       # pair nat (list key) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                SWAP;       # chain_id : pair nat (list key) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                DROP;       # pair nat (list key) : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                SWAP;       # pair chain_id (pair nat (pair nat (list key))) : pair nat (list key) : map key_hash signature : @parameter%rotateKeys : @storage
+                DROP;       # pair nat (list key) : map key_hash signature : @parameter%rotateKeys : @storage
+                SWAP;       # map key_hash signature : pair nat (list key) : @parameter%rotateKeys : @storage
+                DROP;       # pair nat (list key) : @parameter%rotateKeys : @storage
+                SWAP;       # @parameter%rotateKeys : pair nat (list key) : @storage
+                DROP;       # pair nat (list key) : @storage
+              }
+              {
+                PUSH string "TOO_FEW_SIGS"; # string : pair nat (list key) : nat : pair nat (pair nat (list key)) : chain_id : pair chain_id (pair nat (pair nat (list key))) : map key_hash signature : @parameter%rotateKeys : @storage
+                FAILWITH;   # FAILED
+              }; # pair nat (list key) : @storage
+            SWAP;       # @storage : pair nat (list key)
+            # self.data.nonce += 1 # @storage : pair nat (list key)
+            DUP;        # @storage : @storage : pair nat (list key)
+            CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : @storage : pair nat (list key)
+            SWAP;       # @storage : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            CAR;        # pair (nat %nonce) (list %operator_public_keys key) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            DUP;        # pair (nat %nonce) (list %operator_public_keys key) : pair (nat %nonce) (list %operator_public_keys key) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            CDR;        # list key : pair (nat %nonce) (list %operator_public_keys key) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            SWAP;       # pair (nat %nonce) (list %operator_public_keys key) : list key : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            CAR;        # nat : list key : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            PUSH nat 1; # nat : nat : list key : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            ADD;        # nat : list key : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            PAIR;       # pair nat (list key) : pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key)
+            PAIR;       # pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : pair nat (list key)
+            SWAP;       # pair nat (list key) : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            # match_pair_154_fst, match_pair_154_snd = sp.match_tuple(match_pair_130_snd, names = [ "match_pair_154_fst", "match_pair_154_snd" ]) # pair nat (list key) : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            DUP;        # pair nat (list key) : pair nat (list key) : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            CAR;        # nat : pair nat (list key) : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            SWAP;       # pair nat (list key) : nat : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            CDR;        # list key : nat : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            # self.data.signers_threshold = match_pair_154_fst # list key : nat : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            DIG 2;      # pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key : nat
+            DUP;        # pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key : nat
+            CAR;        # pair nat (list key) : pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key : nat
+            SWAP;       # pair (pair nat (list key)) (pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : pair nat (list key) : list key : nat
+            CDR;        # pair (nat %signers_threshold) (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key) : list key : nat
+            CDR;        # pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : pair nat (list key) : list key : nat
+            DIG 3;      # nat : pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds) : pair nat (list key) : list key
+            PAIR;       # pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair nat (list key) : list key
+            SWAP;       # pair nat (list key) : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : list key
+            PAIR;       # pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key
+            # self.data.operator_public_keys = match_pair_154_snd # pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key
+            DUP;        # pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key
+            CDR;        # pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : list key
+            SWAP;       # pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))) : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : list key
+            CAR;        # pair nat (list key) : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : list key
+            CAR;        # nat : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)) : list key
+            DIG 2;      # list key : nat : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))
+            SWAP;       # nat : list key : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))
+            PAIR;       # pair nat (list key) : pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds))
+            PAIR;       # pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
+            NIL operation; # list operation : pair (pair nat (list key)) (pair nat (pair (big_map %timelock nat (pair timestamp (lambda unit (list operation)))) (nat %timelock_seconds)))
           }; # list operation : pair (pair (nat %nonce) (list %operator_public_keys key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
       }; # list operation : pair (pair nat (list key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
     NIL operation; # list operation : list operation : pair (pair nat (list key)) (pair nat (pair (big_map nat (pair timestamp (lambda unit (list operation)))) nat))
