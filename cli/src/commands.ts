@@ -31,20 +31,22 @@ export const bytesToSign = async (operation: OperationData, nodeUrl: url, nonce:
   Utils.print(``)
 
   Utils.print('Encode bytes with: ')
-  Utils.print(`tezos-client hash data 'Pair "${chainId}" (Pair ${actualNonce} ${lambda})' of type 'pair chain_id (pair nat (lambda unit (list operation)))'`)
+  Utils.print(`tezos-client -E ${nodeUrl} hash data 'Pair "${chainId}" (Pair ${actualNonce} ${lambda})' of type 'pair chain_id (pair nat (lambda unit (list operation)))'`)
   Utils.print('')
 
-  const hex = TezosMessageUtils.writePackedData(michelson, "pair (chain_id) (pair (nat) (lambda unit (list operation)))", TezosParameterFormat.Michelson)
-  Utils.print(`[Experimental] I tried to encode the bytes myself. Here is what I came up with: `)
-  Utils.print(hex)
-  Utils.print('')
 
   Utils.print(`Verify these bytes with: `)
-  Utils.print(`tezos-client unpack michelson data  0x<BYTES>`)
+  Utils.print(`tezos-client -E ${nodeUrl} unpack michelson data  0x<BYTES>`)
   Utils.print('')
 
   Utils.print(`Sign these bytes with: `)
-  Utils.print(`tezos-client sign bytes  0x<BYTES> for <KEY>`)
+  Utils.print(`tezos-client -E ${nodeUrl} sign bytes  0x<BYTES> for <KEY>`)
+  Utils.print('')
+
+  // TODO(keefertaylor): Decide what to do with this vestige.
+  const hex = TezosMessageUtils.writePackedData(michelson, "pair (chain_id) (pair (nat) (lambda unit (list operation)))", TezosParameterFormat.Michelson)
+  Utils.print(`[Experimental] I tried to encode the bytes myself. Here is what I came up with: `)
+  Utils.print(hex)
   Utils.print('')
 }
 
@@ -72,20 +74,56 @@ export const keyRotationBytesToSign = async (threshold: number, keyList: Array<p
   Utils.print(``)
 
   Utils.print('Encode bytes with: ')
-  Utils.print(`tezos-client hash data '${michelson}' of type 'pair chain_id (pair nat (pair nat (list key)))'`)
+  Utils.print(`tezos-client -E ${nodeUrl} hash data '${michelson}' of type 'pair chain_id (pair nat (pair nat (list key)))'`)
+  Utils.print('')
+
+  Utils.print(`Verify these bytes with: `)
+  Utils.print(`tezos-client -E ${nodeUrl} unpack michelson data  0x<BYTES>`)
+  Utils.print('')
+
+  Utils.print(`Sign these bytes with: `)
+  Utils.print(`tezos-client -E ${nodeUrl} sign bytes  0x<BYTES> for <KEY>`)
   Utils.print('')
 
   const hex = TezosMessageUtils.writePackedData(michelson, "pair chain_id (pair nat (pair nat (list key)))", TezosParameterFormat.Michelson)
   Utils.print(`[Experimental] I tried to encode the bytes myself. Here is what I came up with: `)
   Utils.print(hex)
   Utils.print('')
+}
+
+/**
+ * Retrieve bytes to sign for a cancel operation.
+ * 
+ * @param operationId The operation id to cancel.
+ * @param nodeUrl The URL of the tezos node.
+ * @param nonce The nonce to use. If undefined, a nonce will be fetched from the multisig contract.
+ * @param multiSigContractAddress The address of the multisig contract.
+ */
+export const cancelBytesToSign = async (operationId: number, nodeUrl: url, nonce: number | undefined, multiSigContractAddress: address) => {
+  const chainId = await getChainId(nodeUrl)
+  const actualNonce = nonce ?? (await getNonce(multiSigContractAddress, nodeUrl) + 1)
+
+  const michelson = `Pair "${chainId}" (Pair ${actualNonce} ${operationId})`
+
+  Utils.print('Data to encode')
+  Utils.print(`${michelson}`)
+  Utils.print(``)
+
+  Utils.print('Encode bytes with: ')
+  Utils.print(`tezos-client -E ${nodeUrl} hash data '${michelson}' of type 'pair chain_id (pair nat nat)'`)
+  Utils.print('')
 
   Utils.print(`Verify these bytes with: `)
-  Utils.print(`tezos-client unpack michelson data  0x<BYTES>`)
+  Utils.print(`tezos-client -E ${nodeUrl} unpack michelson data  0x<BYTES>`)
   Utils.print('')
 
   Utils.print(`Sign these bytes with: `)
-  Utils.print(`tezos-client sign bytes  0x<BYTES> for <KEY>`)
+  Utils.print(`tezos-client -E ${nodeUrl} sign bytes  0x<BYTES> for <KEY>`)
+  Utils.print('')
+
+  const hex = TezosMessageUtils.writePackedData(michelson, "pair chain_id (pair nat nat)", TezosParameterFormat.Michelson)
+  Utils.print(`[Experimental] I tried to encode the bytes myself. Here is what I came up with: `)
+  Utils.print(hex)
   Utils.print('')
 }
 
@@ -139,10 +177,93 @@ export const deployMultisig = async (timelockSeconds: number, threshold: number,
 }
 
 /**
+ * Cancels an operation.
+ * 
+ * @param operationId The operation to cancel.
+ * @param addresses Parallel sorted arrays of addresses.
+ * @param signatures Parrell sorted array of signatures.
+ * @param nonce The nonce. 
+ * @param multiSigContractAddress The address of the multisig
+ * @param nodeUrl The url of the Tezos node. 
+ * @param privateKey The private key to sign the transaction with. Only keys starting with edsk are supported.
+ */
+export const cancel = async (
+  operationId: number,
+  addresses: Array<address>,
+  signatures: Array<string>,
+  nonce: number,
+  multiSigContractAddress: address,
+  nodeUrl: url,
+  privateKey: string
+) => {
+  const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
+  const signer = await Utils.signerFromKeyStore(keyStore)
+
+  Utils.print(`Submitting command from command from: ${keyStore.publicKeyHash} `)
+  Utils.print(`Using nonce: ${nonce} `)
+
+  await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
+
+  const counter = await TezosNodeReader.getCounterForAccount(
+    nodeUrl,
+    keyStore.publicKeyHash,
+  )
+
+  const chainId = await getChainId(nodeUrl)
+
+  let signaturesMap = ""
+  for (let i = 0; i < addresses.length; i++) {
+    const address = addresses[i]
+    const signature = signatures[i]
+
+    signaturesMap += `Elt "${address}" "${signature}"; `
+  }
+
+  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${nonce} ${operationId}))`
+  Utils.print("Invoking with param: " + param)
+  Utils.print('')
+
+  Utils.print(`I will try to invoke the operation but it will likely fail.`)
+  Utils.print(`Use tezos-client to submit the operation manually.`)
+  Utils.print(`tezos-client -E ${nodeUrl} transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'cancel'`)
+  Utils.print('')
+
+  Utils.print(`Attempting to inject automatically:`)
+  const operation = TezosNodeWriter.constructContractInvocationOperation(
+    keyStore.publicKeyHash,
+    counter + 1,
+    multiSigContractAddress,
+    0,
+    0,
+    Constants.storageLimit,
+    Constants.gasLimit,
+    'cancel',
+    `${param} `,
+    TezosParameterFormat.Michelson,
+  )
+
+  const operationFeeEstimator = new OperationFeeEstimator(
+    nodeUrl
+  )
+  const operationsWithFees = await operationFeeEstimator.estimateAndApplyFees(
+    [operation],
+  )
+
+  const nodeResult = await TezosNodeWriter.sendOperation(
+    nodeUrl,
+    operationsWithFees,
+    signer,
+  )
+
+  const hash = nodeResult.operationGroupID.replace(/"/g, '')
+  Utils.print(`Executed with hash: ${hash} `)
+}
+
+/**
  * Rotates keys.
  * 
  * @param threshold The new threshold
- * @param keyList The new list ofkeys.
+ * @param keyList The new list of keys.
  * @param addresses Parallel sorted arrays of addresses.
  * @param signatures Parrell sorted array of signatures.
  * @param nonce The nonce. 
@@ -193,7 +314,7 @@ export const rotateKey = async (
 
   Utils.print(`I will try to invoke the operation but it will likely fail.`)
   Utils.print(`Use tezos-client to submit the operation manually.`)
-  Utils.print(`tezos-client transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'rotateKeys'`)
+  Utils.print(`tezos-client -E ${nodeUrl} transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'rotateKeys'`)
   Utils.print('')
 
   Utils.print(`Attempting to inject automatically:`)
@@ -278,7 +399,7 @@ export const submit = async (
 
   Utils.print(`I will try to invoke the operation but it will likely fail.`)
   Utils.print(`Use tezos-client to submit the operation manually.`)
-  Utils.print(`tezos-client transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'addExecutionRequest'`)
+  Utils.print(`tezos-client -E ${nodeUrl} transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'addExecutionRequest'`)
   Utils.print('')
 
   Utils.print(`Attempting to inject automatically:`)

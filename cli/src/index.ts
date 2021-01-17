@@ -5,12 +5,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+// TODO(keefertaylor): Support and test executing a command.
+
 import fetch from 'node-fetch'
 import { getLogger, LogLevelDesc } from 'loglevel'
 import { registerFetch, registerLogger } from 'conseiljs'
-import { bytesToSign, deployMultisig, submit, keyRotationBytesToSign, rotateKey } from './commands'
+import { bytesToSign, deployMultisig, submit, keyRotationBytesToSign, rotateKey, cancel, cancelBytesToSign } from './commands'
 import * as commander from 'commander'
 import { OperationData } from './types'
+import { command } from 'commander'
 
 const version = '0.0.2'
 
@@ -21,6 +24,7 @@ program.version(version)
 program.option('--debug', 'Print verbose output.')
 
 // Deploy multisig command.
+// TODO(keefertaylor): s/deployer-private-key/private-key
 program
   .command('deploy')
   .description('Deploys a multisig contract')
@@ -92,6 +96,43 @@ program
     keyRotationBytesToSign(commandObject.threshold, keys, commandObject.nodeUrl, commandObject.nonce, commandObject.multisigAddress)
   })
 
+// Obtain bytes to sign for a cancellation.
+program
+  .command('cancel-bytes')
+  .description('Get bytes to sign for a key rotation')
+  .requiredOption('--operation-id <number>', 'The operation id to cancel')
+  .requiredOption('--node-url <string>', "The URL of the node to use")
+  .requiredOption('--multisig-address <string>', "The address of the multisig contract.")
+  .option('--nonce <number>', 'The nonce to use, or undefined.')
+  .action(function (commandObject) {
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    initConseil(conseilLogLevel)
+
+    cancelBytesToSign(commandObject.operationId, commandObject.nodeUrl, commandObject.nonce, commandObject.multisigAddress)
+  })
+
+// Cancel
+program
+  .command('cancel')
+  .description('Rotate keys')
+  .requiredOption('--operation-id <number>', 'The operation id to cancel')
+  .requiredOption('--node-url <string>', "The URL of the node to use")
+  .requiredOption('--multisig-address <string>', "The address of the multisig contract.")
+  .requiredOption('--nonce <number>', 'The nonce to use, or undefined.')
+  .requiredOption('--private-key <string>', "Private key of the submitter, prefixed with edsk.")
+  .requiredOption('--signatures <string>', "Pairs of public key hashes and signatures, separated by colors. Ex: 'tz1abc:edsig123,tz2def:edsig456'")
+  .action(function (commandObject) {
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    initConseil(conseilLogLevel)
+
+    // Create parallel sorted arrays of addresses and signatures, in alphabetical order.
+    const adddressesAndSignatures: Array<string> = commandObject.signatures.split(',').sort()
+    const addresses = adddressesAndSignatures.map((value) => value.split(':')[0])
+    const signatures = adddressesAndSignatures.map((value) => value.split(':')[1])
+
+    cancel(commandObject.operationId, addresses, signatures, commandObject.nonce, commandObject.multisigAddress, commandObject.nodeUrl, commandObject.privateKey)
+  })
+
 // Rotate keys
 program
   .command('rotate-keys')
@@ -106,13 +147,6 @@ program
   .action(function (commandObject) {
     const conseilLogLevel = program.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
-
-    const operation: OperationData = {
-      address: commandObject.targetContract,
-      argSmartPy: commandObject.targetArg,
-      entrypoint: commandObject.targetEntrypoint,
-      amountMutez: 0
-    }
 
     // Sort new keys.
     const keys = commandObject.signers.split(',').sort()
