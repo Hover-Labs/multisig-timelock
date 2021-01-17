@@ -8,12 +8,11 @@
 import fetch from 'node-fetch'
 import { getLogger, LogLevelDesc } from 'loglevel'
 import { registerFetch, registerLogger } from 'conseiljs'
-import { bytesToSign, deployMultisig, submit } from './commands'
+import { bytesToSign, deployMultisig, submit, keyRotationBytesToSign, rotateKey } from './commands'
 import * as commander from 'commander'
 import { OperationData } from './types'
-import { command } from 'commander'
 
-const version = '0.0.1'
+const version = '0.0.2'
 
 const program = new commander.Command()
 program.version(version)
@@ -50,6 +49,7 @@ program
   })
 
 // Obtain bytes to sign.
+// TODO(keefertaylor): Update for key rotation bytes
 program
   .command('bytes')
   .description('Get bytes to sign for an operation')
@@ -71,6 +71,58 @@ program
     }
 
     bytesToSign(operation, commandObject.nodeUrl, commandObject.nonce, commandObject.multisigAddress)
+  })
+
+
+// Obtain bytes to sign for a key rotation.
+program
+  .command('key-rotation-bytes')
+  .description('Get bytes to sign for a key rotation')
+  .requiredOption('--threshold <number>', 'The new threshold')
+  .requiredOption('--signers <string>', 'A comma separated list of signer\'s public keys. Ex: "edpk123,edpk456,edpk789"')
+  .requiredOption('--node-url <string>', "The URL of the node to use")
+  .requiredOption('--multisig-address <string>', "The address of the multisig contract.")
+  .option('--nonce <number>', 'The nonce to use, or undefined.')
+  .action(function (commandObject) {
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    initConseil(conseilLogLevel)
+
+    const keys = commandObject.signers.split(',').sort()
+
+    keyRotationBytesToSign(commandObject.threshold, keys, commandObject.nodeUrl, commandObject.nonce, commandObject.multisigAddress)
+  })
+
+// Rotate keys
+program
+  .command('rotate-keys')
+  .description('Rotate keys')
+  .requiredOption('--threshold <number>', 'The new threshold')
+  .requiredOption('--signers <string>', 'A comma separated list of signer\'s public keys. Ex: "edpk123,edpk456,edpk789"')
+  .requiredOption('--node-url <string>', "The URL of the node to use")
+  .requiredOption('--multisig-address <string>', "The address of the multisig contract.")
+  .requiredOption('--nonce <number>', 'The nonce to use, or undefined.')
+  .requiredOption('--private-key <string>', "Private key of the submitter, prefixed with edsk.")
+  .requiredOption('--signatures <string>', "Pairs of public key hashes and signatures, separated by colors. Ex: 'tz1abc:edsig123,tz2def:edsig456'")
+  .action(function (commandObject) {
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    initConseil(conseilLogLevel)
+
+    const operation: OperationData = {
+      address: commandObject.targetContract,
+      argSmartPy: commandObject.targetArg,
+      entrypoint: commandObject.targetEntrypoint,
+      amountMutez: 0
+    }
+
+    // Sort new keys.
+    const keys = commandObject.signers.split(',').sort()
+
+    // Create parallel sorted arrays of addresses and signatures, in alphabetical order.
+    const adddressesAndSignatures: Array<string> = commandObject.signatures.split(',').sort()
+    const addresses = adddressesAndSignatures.map((value) => value.split(':')[0])
+    const signatures = adddressesAndSignatures.map((value) => value.split(':')[1])
+
+    rotateKey(commandObject.threshold, keys, addresses, signatures, commandObject.nonce, commandObject.multisigAddress, commandObject.nodeUrl, commandObject.privateKey)
   })
 
 // Submit bytes

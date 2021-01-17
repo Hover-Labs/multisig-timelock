@@ -574,6 +574,7 @@ def test():
 ################################################################
 
 # TODO(keefertaylor): No need for value store contract.
+# TODO(keefertaylor): Ensure nonce checks.
 
 @sp.add_test(name = "rotateKeys - succeeds with all signatures")
 def test():
