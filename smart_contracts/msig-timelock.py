@@ -27,6 +27,18 @@ KEY_DATA_TYPE = sp.TPair(sp.TNat, sp.TList(sp.TKey))
 # - payload (LAMBDA_TYPE) The lambda to execute.
 EXECUTION_REQUEST_TYPE = sp.TPair(sp.TChainId, sp.TPair(sp.TNat, LAMBDA_TYPE))
 
+# Type for a request to cancel.
+# - chainId (chainID) The chain id to execute on.
+# - nonce (nat) The nonce of the contract
+# - timelockId (nat) The id in the timelock to cancel.
+CANCELLATION_REQUEST_TYPE = sp.TPair(sp.TChainId, sp.TPair(sp.TNat, sp.TNat))
+
+# Type cor a signed request to cancel.
+# Params:
+# - signatures (SIGNATURES_TYPE) A map of public keys to signatures
+# - cancellationRequest (CANCELLATION_REQUEST_TYPE) The cancellation request.
+SIGNED_CANCELLATION_REQUEST_TYPE = sp.TPair(SIGNATURES_TYPE, CANCELLATION_REQUEST_TYPE)
+
 # Type for a signed execution request.
 # Params:
 # - signatures (SIGNATURES_TYPE) A map of public keys to signatures
@@ -125,7 +137,7 @@ class MultiSigTimelock(sp.Contract):
       sp.set_type(signedKeyRotationRequest, SIGNED_KEY_ROTATION_REQUEST_TYPE)
       signatures, keyRotationRequest = sp.match_pair(signedKeyRotationRequest)
 
-      # Destructure execution request
+      # Destructure key request
       chainId, innerPair = sp.match_pair(keyRotationRequest)
       nonce, keyData = sp.match_pair(innerPair)
 
@@ -154,6 +166,43 @@ class MultiSigTimelock(sp.Contract):
       threshold, keyList = sp.match_pair(keyData)
       self.data.signers_threshold  = threshold
       self.data.operator_public_keys = keyList
+
+    # Cancel a request in the timelock.
+    # Param:
+    # - signedCancellationRequest (SIGNED_CANCELLATION_REQUEST_TYPE) The request to submit.
+    @sp.entry_point
+    def cancel(self, signedCancellationRequest):
+      # Destructure input params
+      sp.set_type(signedCancellationRequest, SIGNED_CANCELLATION_REQUEST_TYPE)
+      signatures, cancellationRequest = sp.match_pair(signedCancellationRequest)
+
+      # Destructure cancellation request
+      chainId, innerPair = sp.match_pair(cancellationRequest)
+      nonce, cancellationTarget = sp.match_pair(innerPair)
+
+      # Verify ChainID
+      sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
+      
+      # Verify Nonce
+      sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+
+      # Count valid signatures
+      validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
+      sp.for operator_public_key in self.data.operator_public_keys:
+        # Check if the given public key is in the signatures list.
+        keyHash = sp.hash_key(operator_public_key)
+        sp.if signatures.contains(keyHash):
+          sp.verify(sp.check_signature(operator_public_key, signatures[keyHash], sp.pack(cancellationRequest)), "BAD_SIGNATURE")
+          validSignaturesCounter.value += 1
+        
+      # Verify that enough signatures were provided.
+      sp.verify(validSignaturesCounter.value >= self.data.signers_threshold, "TOO_FEW_SIGS")
+
+      # Increment nonce.
+      self.data.nonce += 1
+
+      # Update key data
+      del self.data.timelock[cancellationTarget]
 
     # Execute a request in the timelock.
     # Pamrams:
@@ -940,6 +989,477 @@ def test():
 
   # THEN it fails.
   scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+    chain_id = chainId,
+    now = now,
+    valid = False
+  )
+
+
+################################################################
+# cancel
+################################################################
+
+# TODO(keefertaylor): nonces
+
+@sp.add_test(name = "cancel - succeeds with all signatures")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig with an operation loaded.
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  chainId = sp.chain_id_cst("0x9caecab9")
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND a cancellation request
+  cancellationRequest = (chainId, (nonce + 1, nonce))
+
+  # AND a payload is correctly signed by all parties.
+  cancellationRequestBytes = sp.pack(cancellationRequest)
+
+  aliceSignature = sp.make_signature(alice.secret_key, cancellationRequestBytes)
+  bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, cancellationRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, cancellationRequestBytes)
+  eveSignature = sp.make_signature(eve.secret_key, cancellationRequestBytes)
+
+  #  WHEN the request is sent to the multisignature contract.
+  signatures = {
+   alice.public_key_hash:   aliceSignature,
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+   eve.public_key_hash:     eveSignature 
+  }
+  signedCancellationRequest = (signatures, cancellationRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.cancel(signedCancellationRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # THEN the timelock is cleared.
+  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+
+  # AND the nonce is incremented.
+  scenario.verify(multiSigContract.data.nonce == nonce + 1)
+
+@sp.add_test(name = "cancel - succeeds with threshold signatures")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig with an operation loaded.
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  chainId = sp.chain_id_cst("0x9caecab9")
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND a cancellation request
+  cancellationRequest = (chainId, (nonce + 1, nonce))
+
+  # AND a payload is correctly signed by 3 parties.
+  cancellationRequestBytes = sp.pack(cancellationRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, cancellationRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, cancellationRequestBytes)
+
+  #  WHEN the request is sent to the multisignature contract.
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedCancellationRequest = (signatures, cancellationRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.cancel(signedCancellationRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # THEN the timelock is cleared.
+  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+
+  # AND the nonce is incremented.
+  scenario.verify(multiSigContract.data.nonce == nonce + 1)
+
+@sp.add_test(name = "cancel - fails with bad nonce")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig with an operation loaded.
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  chainId = sp.chain_id_cst("0x9caecab9")
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND a cancellation request with a bad nonce
+  badNonce = 4 # obviously wrong.
+  cancellationRequest = (chainId, (badNonce, nonce))
+  cancellationRequestBytes = sp.pack(cancellationRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, cancellationRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, cancellationRequestBytes)
+
+  # WHEN the request is sent to the multisignature contract
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedCancellationRequest = (signatures, cancellationRequest)
+  now = sp.timestamp(123)
+
+  # THEN the call fails.
+  scenario += multiSigContract.cancel(signedCancellationRequest).run(
+    chain_id = chainId,
+    now = now,
+    valid = False
+  )
+
+@sp.add_test(name = "cancel - fails with bad chain id")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig with an operation loaded.
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  chainId = sp.chain_id_cst("0x9caecab9")
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND a cancellation request
+  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequestBytes = sp.pack(cancellationRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, cancellationRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, cancellationRequestBytes)
+
+  # WHEN the request is sent to the multisignature contract with an incorrect chain id
+  # THEN the request fails.
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedCancellationRequest = (signatures, cancellationRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.cancel(signedCancellationRequest).run(
+    chain_id = sp.chain_id_cst("0x0011223344"),
+    now = now,
+    valid = False
+  )
+
+@sp.add_test(name = "cancel - fails with less than threshold signatures")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig with an operation loaded.
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  chainId = sp.chain_id_cst("0x9caecab9")
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, executionRequestBytes)
+
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+   dan.public_key_hash:     danSignature,
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND a cancellation request
+  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequestBytes = sp.pack(cancellationRequest)
+
+  # AND a payload is correctly signed by less than the threshold.
+  bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, cancellationRequestBytes)
+
+  #  WHEN the request is sent to the multisignature contract.
+  signatures = {
+   bob.public_key_hash:     bobSignature, 
+   charlie.public_key_hash: charlieSignature,
+  }
+  signedCancellationRequest = (signatures, cancellationRequest)
+  now = sp.timestamp(123)
+
+  # THEN it fails.
+  scenario += multiSigContract.cancel(signedCancellationRequest).run(
+    chain_id = chainId,
+    now = now,
+    valid = False
+  )
+
+@sp.add_test(name = "cancel - does not count invalid signatures")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a set of an accounts
+  alice = sp.test_account("alice")
+  bob = sp.test_account("bob")
+  charlie = sp.test_account("charlie")
+  dan = sp.test_account("dan")
+  eve = sp.test_account("eve")
+
+  # AND a timelock multisig with an operation loaded.
+  threshhold = 3
+  timelockSeconds = sp.nat(1)
+  multiSigContract = MultiSigTimelock(
+    signers_threshold = threshhold,
+    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key],
+    timelock_seconds = timelockSeconds
+  )
+  scenario += multiSigContract
+
+  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  chainId = sp.chain_id_cst("0x9caecab9")
+  newValue = sp.nat(1)
+  def updateLambda(unitParam):
+    sp.set_type(unitParam, sp.TUnit)
+    storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
+    sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
+
+  nonce = 1
+  executionRequest = (chainId, (nonce, updateLambda))
+  executionRequestBytes = sp.pack(executionRequest)
+
+  aliceSignature = sp.make_signature(alice.secret_key, executionRequestBytes)
+  bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
+  charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
+
+  signatures = {
+    alice.public_key_hash: aliceSignature,
+    bob.public_key_hash:     bobSignature,
+    charlie.public_key_hash: charlieSignature
+  }
+  signedExecutionRequest = (signatures, executionRequest)
+  now = sp.timestamp(123)
+  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+    chain_id = chainId,
+    now = now
+  )
+
+  # AND a cancellation request
+  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequestBytes = sp.pack(cancellationRequest)
+
+  # AND a payload is signed by 3 signatures but 2 are invalid.
+  charlieSignature = sp.make_signature(charlie.secret_key, cancellationRequestBytes)
+  danSignature = sp.make_signature(dan.secret_key, cancellationRequestBytes)
+  eveSignature = sp.make_signature(eve.secret_key, cancellationRequestBytes)
+
+  #  WHEN the request is sent to the multisignature contract.
+  signatures = {
+    charlie.public_key_hash: charlieSignature,
+    dan.public_key_hash: danSignature,
+    eve.public_key_hash: eveSignature,
+  }
+  signedCancellationRequest = (signatures, cancellationRequest)
+  now = sp.timestamp(123)
+
+  # THEN it fails.
+  scenario += multiSigContract.cancel(signedCancellationRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
