@@ -441,6 +441,7 @@ export const submit = async (
  * @param nodeUrl The url of the Tezos node. 
  * @param privateKey The private key to sign the transaction with. Only keys starting with edsk are supported.
  */
+// TODO(keefertaylor): Standardize operation id vs nonce
 export const executeCommand = async (nonce: number, multiSigContractAddress: address, nodeUrl: url, privateKey: string) => {
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)

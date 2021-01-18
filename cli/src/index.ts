@@ -10,7 +10,7 @@
 import fetch from 'node-fetch'
 import { getLogger, LogLevelDesc } from 'loglevel'
 import { registerFetch, registerLogger } from 'conseiljs'
-import { bytesToSign, deployMultisig, submit, keyRotationBytesToSign, rotateKey, cancel, cancelBytesToSign } from './commands'
+import { bytesToSign, deployMultisig, submit, keyRotationBytesToSign, rotateKey, cancel, cancelBytesToSign, executeCommand } from './commands'
 import * as commander from 'commander'
 import { OperationData } from './types'
 import { command } from 'commander'
@@ -160,6 +160,7 @@ program
   })
 
 // Submit bytes
+// TODO(Keefertaylor): make nonce optional.
 program
   .command('submit')
   .description('Submit an operation')
@@ -188,6 +189,22 @@ program
     const signatures = adddressesAndSignatures.map((value) => value.split(':')[1])
 
     submit(operation, addresses, signatures, commandObject.nonce, commandObject.multisigAddress, commandObject.nodeUrl, commandObject.privateKey)
+  })
+
+
+// Execute a command in the timelock
+program
+  .command('execute')
+  .description('Executes an operation in the timelock')
+  .requiredOption('--operation-id <number>', 'The operation ID to execute')
+  .requiredOption('--node-url <string>', "The URL of the node to use")
+  .requiredOption('--multisig-address <string>', "The address of the multisig contract.")
+  .requiredOption('--private-key <string>', "Private key of the submitter, prefixed with edsk.")
+  .action(function (commandObject) {
+    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    initConseil(conseilLogLevel)
+
+    executeCommand(commandObject.operationId, commandObject.multisigAddress, commandObject.nodeUrl, commandObject.privateKey)
   })
 
 /**
