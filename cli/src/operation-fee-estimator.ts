@@ -19,7 +19,7 @@ export default class OperationFeeEstimator {
   public constructor(
     private readonly tezosNodeUrl: string,
     private readonly enableZeroFees: boolean = false,
-  ) { }
+  ) {}
 
   /**
    * Set a fee and gas/storage limits on a group of operations.

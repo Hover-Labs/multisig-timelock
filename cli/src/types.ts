@@ -7,9 +7,9 @@ export type url = string
 
 // An operation for the multisig to trigger.
 export type OperationData = {
-  address: address,
-  amountMutez: number,
-  entrypoint: string,
+  address: address
+  amountMutez: number
+  entrypoint: string
   argSmartPy: string
 }
 

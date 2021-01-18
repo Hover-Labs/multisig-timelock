@@ -4,7 +4,7 @@ This smart contract creates a multisig contract with a timelock.
 
 The contract maintains a nonce to prevent replay attacks. Additionally, the chain ID is also checked to prevent replay attacks. 
 
-When an operation is submitted, it is placed in a timelock and can be executed after the timelock length has passed. Multiple operations can be timelocked at the same time. Anyone can execute commands in a timelock after the time has passed.
+When an operation is submitted, it is placed in a timelock and can be executed after the timelock length has passed. Multiple operations can be timelocked at the same time. Anyone can execute operations in a timelock after the time has passed.
 
 A CLI is provided as well, which helps create and formulate bytes to sign and submit to the contract.
 

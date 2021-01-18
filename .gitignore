@@ -1,3 +1,5 @@
+# Ignore built JS
+build/
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,osx,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,osx,node

@@ -143,8 +143,6 @@ const utils = {
 
     // Make sure use did not unwittingly provide a seed.
     if (privateKey.length === 54) {
-      console.log("sodium: " + sodium)
-
       // Decode and slice the `edsk` prefix.
       await sodium.ready
       const decodedBytes = base58Check.decode(privateKey).slice(4)
