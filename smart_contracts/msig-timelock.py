@@ -69,184 +69,162 @@ SIGNED_KEY_ROTATION_REQUEST_TYPE = sp.TPair(SIGNATURES_TYPE, KEY_ROTATION_REQUES
 ################################################################
 
 class MultiSigTimelock(sp.Contract):
-   # TODO(keefertaylor): Consistent indentation and casing.
-    def __init__(self, 
-      signers_threshold = sp.nat(1),
-      timelock_seconds = sp.nat(60 * 60), # 1 hour
-      operator_public_keys = [sp.key("edpkuX2icxnt5krjTJAmNv8uNJNiQtFmDy9Hzj6SF1f6e3NjT4LXKB")]
-    ):
-        self.init(
-            nonce=sp.nat(0), 
-            signers_threshold=signers_threshold,
-            operator_public_keys=operator_public_keys,
+  # Params:
+  # - threshold (nat) The number of signatures required.
+  # - timelockSeconds (nat) The number of seconds a timelock lasts for.
+  # - signers (list(key)) The keys which can sign.
+  def __init__(self, 
+    threshold = sp.nat(1),
+    timelockSeconds = sp.nat(60 * 60), # 1 hour
+    signers = [sp.key("edpkuX2icxnt5krjTJAmNv8uNJNiQtFmDy9Hzj6SF1f6e3NjT4LXKB")]
+  ):
+    self.init(
+      nonce=sp.nat(0), 
+      threshold=threshold,
+      signers=signers,
+      timelockSeconds = timelockSeconds,
 
-            # Seconds to timelock for.
-            timelock_seconds = timelock_seconds,
+      # Map of <nonce>:<execution request>
+      timelock = sp.big_map(
+        l = {},
+        tkey = sp.TNat,
+        tvalue = TIMELOCK_TYPE
+      )
+    )
 
-            # Map of <nonce>:<execution request>
-            timelock = sp.big_map(
-                l = {},
-                tkey = sp.TNat,
-                tvalue = TIMELOCK_TYPE
-            )
-        )
-
-    # Add a request to the timelock, assuming it has been properly signed.
-    # Param:
-    # - signedExecutionRequest (SIGNED_EXECUTION_REQUEST_TYPE) The request to submit.
-    @sp.entry_point
-    def addExecutionRequest(self, signedExecutionRequest):
-      # Destructure input params
-      sp.set_type(signedExecutionRequest, SIGNED_EXECUTION_REQUEST_TYPE)
-      signatures, executionRequest = sp.match_pair(signedExecutionRequest)
-
-      # Destructure execution request
-      chainId, innerPair = sp.match_pair(executionRequest)
-      nonce, lambdaToExecute = sp.match_pair(innerPair)
-
-      # Verify ChainID
-      sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
-      
-      # Verify Nonce
-      sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
-
-      # Count valid signatures
-      validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
-      sp.for operator_public_key in self.data.operator_public_keys:
-        # Check if the given public key is in the signatures list.
-        keyHash = sp.hash_key(operator_public_key)
-        sp.if signatures.contains(keyHash):
-          sp.verify(sp.check_signature(operator_public_key, signatures[keyHash], sp.pack(executionRequest)), "BAD_SIGNATURE")
-          validSignaturesCounter.value += 1
-        
-      # Verify that enough signatures were provided.
-      sp.verify(validSignaturesCounter.value >= self.data.signers_threshold, "TOO_FEW_SIGS")
-
-      # Increment nonce.
-      self.data.nonce += 1
-
-      # Add to timelock.
-      self.data.timelock[self.data.nonce] = (sp.now, lambdaToExecute)
-
-    # Rotate keys, assuming the request has been properly signed.
-    # Param:
-    # - signedKeyRotationRequest (SIGNED_KEY_ROTATION_REQUEST_TYPE) The request to submit.
-    @sp.entry_point
-    def rotateKeys(self, signedKeyRotationRequest):
-      # Destructure input params
-      sp.set_type(signedKeyRotationRequest, SIGNED_KEY_ROTATION_REQUEST_TYPE)
-      signatures, keyRotationRequest = sp.match_pair(signedKeyRotationRequest)
-
-      # Destructure key request
-      chainId, innerPair = sp.match_pair(keyRotationRequest)
-      nonce, keyData = sp.match_pair(innerPair)
-
-      # Verify ChainID
-      sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
-      
-      # Verify Nonce
-      sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
-
-      # Count valid signatures
-      validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
-      sp.for operator_public_key in self.data.operator_public_keys:
-        # Check if the given public key is in the signatures list.
-        keyHash = sp.hash_key(operator_public_key)
-        sp.if signatures.contains(keyHash):
-          sp.verify(sp.check_signature(operator_public_key, signatures[keyHash], sp.pack(keyRotationRequest)), "BAD_SIGNATURE")
-          validSignaturesCounter.value += 1
-        
-      # Verify that enough signatures were provided.
-      sp.verify(validSignaturesCounter.value >= self.data.signers_threshold, "TOO_FEW_SIGS")
-
-      # Increment nonce.
-      self.data.nonce += 1
-
-      # Update key data
-      threshold, keyList = sp.match_pair(keyData)
-      self.data.signers_threshold  = threshold
-      self.data.operator_public_keys = keyList
-
-    # Cancel a request in the timelock.
-    # Param:
-    # - signedCancellationRequest (SIGNED_CANCELLATION_REQUEST_TYPE) The request to submit.
-    @sp.entry_point
-    def cancel(self, signedCancellationRequest):
-      # Destructure input params
-      sp.set_type(signedCancellationRequest, SIGNED_CANCELLATION_REQUEST_TYPE)
-      signatures, cancellationRequest = sp.match_pair(signedCancellationRequest)
-
-      # Destructure cancellation request
-      chainId, innerPair = sp.match_pair(cancellationRequest)
-      nonce, cancellationTarget = sp.match_pair(innerPair)
-
-      # Verify ChainID
-      sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
-      
-      # Verify Nonce
-      sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
-
-      # Count valid signatures
-      validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
-      sp.for operator_public_key in self.data.operator_public_keys:
-        # Check if the given public key is in the signatures list.
-        keyHash = sp.hash_key(operator_public_key)
-        sp.if signatures.contains(keyHash):
-          sp.verify(sp.check_signature(operator_public_key, signatures[keyHash], sp.pack(cancellationRequest)), "BAD_SIGNATURE")
-          validSignaturesCounter.value += 1
-        
-      # Verify that enough signatures were provided.
-      sp.verify(validSignaturesCounter.value >= self.data.signers_threshold, "TOO_FEW_SIGS")
-
-      # Increment nonce.
-      self.data.nonce += 1
-
-      # Update key data
-      del self.data.timelock[cancellationTarget]
-
-    # Execute a request in the timelock.
-    # Pamrams:
-    # - nonce (nat) The identifier of the nonce to execute.
-    @sp.entry_point
-    def execute(self, nonce):
-        # Get timelock. Will fail if there's no request for nonce.
-        timelockItem = self.data.timelock[nonce]
-        timelockToStart, lambdaToExecute = sp.match_pair(timelockItem)
-
-        # Verify time has been exceeded.
-        execution_time = timelockToStart.add_seconds(sp.to_int(self.data.timelock_seconds))
-        sp.verify(execution_time < sp.now, "TOO_EARLY")
-
-        # Remove item from timelock.
-        del self.data.timelock[nonce]
-
-        # Execute request.
-        operations = lambdaToExecute(sp.unit)
-        sp.set_type(operations, sp.TList(sp.TOperation))
-        sp.add_operations(operations)
-
-    # TODO(keefertaylor): Write a cancel function.
-
-################################################################
-################################################################
-# Test Helpers
-################################################################
-################################################################
-
-# A contract which stores a value that may only be set by the admin.
-# TODO(keefertaylor): Refactor?
-class StoreValueContract(sp.Contract):
-  def __init__(self, value, admin):
-    self.init(storedValue = value, admin=admin)
-
+  # Add a request to the timelock, assuming it has been properly signed.
+  # Param:
+  # - signedExecutionRequest (SIGNED_EXECUTION_REQUEST_TYPE) The request to submit.
   @sp.entry_point
-  def default(self, params):
-    pass
+  def submit(self, signedExecutionRequest):
+    # Destructure input params
+    sp.set_type(signedExecutionRequest, SIGNED_EXECUTION_REQUEST_TYPE)
+    signatures, executionRequest = sp.match_pair(signedExecutionRequest)
 
+    # Destructure execution request
+    chainId, innerPair = sp.match_pair(executionRequest)
+    nonce, lambdaToExecute = sp.match_pair(innerPair)
+
+    # Verify ChainID
+    sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
+    
+    # Verify Nonce
+    sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+
+    # Count valid signatures
+    validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
+    sp.for signer in self.data.signers:
+      # Check if the given public key is in the signatures list.
+      keyHash = sp.hash_key(signer)
+      sp.if signatures.contains(keyHash):
+        sp.verify(sp.check_signature(signer, signatures[keyHash], sp.pack(executionRequest)), "BAD_SIGNATURE")
+        validSignaturesCounter.value += 1
+      
+    # Verify that enough signatures were provided.
+    sp.verify(validSignaturesCounter.value >= self.data.threshold, "TOO_FEW_SIGS")
+
+    # Increment nonce.
+    self.data.nonce += 1
+
+    # Add to timelock.
+    self.data.timelock[self.data.nonce] = (sp.now, lambdaToExecute)
+
+  # Rotate keys, assuming the request has been properly signed.
+  # Param:
+  # - signedKeyRotationRequest (SIGNED_KEY_ROTATION_REQUEST_TYPE) The request to submit.
   @sp.entry_point
-  def replace(self, newValue):
-    sp.verify(sp.sender == self.data.admin, "NOT_ADMIN")       
-    self.data.storedValue = newValue
+  def rotate(self, signedKeyRotationRequest):
+    # Destructure input params
+    sp.set_type(signedKeyRotationRequest, SIGNED_KEY_ROTATION_REQUEST_TYPE)
+    signatures, keyRotationRequest = sp.match_pair(signedKeyRotationRequest)
+
+    # Destructure key request
+    chainId, innerPair = sp.match_pair(keyRotationRequest)
+    nonce, keyData = sp.match_pair(innerPair)
+
+    # Verify ChainID
+    sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
+    
+    # Verify Nonce
+    sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+
+    # Count valid signatures
+    validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
+    sp.for signer in self.data.signers:
+      # Check if the given public key is in the signatures list.
+      keyHash = sp.hash_key(signer)
+      sp.if signatures.contains(keyHash):
+        sp.verify(sp.check_signature(signer, signatures[keyHash], sp.pack(keyRotationRequest)), "BAD_SIGNATURE")
+        validSignaturesCounter.value += 1
+      
+    # Verify that enough signatures were provided.
+    sp.verify(validSignaturesCounter.value >= self.data.threshold, "TOO_FEW_SIGS")
+
+    # Increment nonce.
+    self.data.nonce += 1
+
+    # Update key data
+    threshold, keyList = sp.match_pair(keyData)
+    self.data.threshold  = threshold
+    self.data.signers = keyList
+
+  # Cancel a request in the timelock.
+  # Param:
+  # - signedCancellationRequest (SIGNED_CANCELLATION_REQUEST_TYPE) The request to submit.
+  @sp.entry_point
+  def cancel(self, signedCancellationRequest):
+    # Destructure input params
+    sp.set_type(signedCancellationRequest, SIGNED_CANCELLATION_REQUEST_TYPE)
+    signatures, cancellationRequest = sp.match_pair(signedCancellationRequest)
+
+    # Destructure cancellation request
+    chainId, innerPair = sp.match_pair(cancellationRequest)
+    nonce, cancellationTarget = sp.match_pair(innerPair)
+
+    # Verify ChainID
+    sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
+    
+    # Verify Nonce
+    sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+
+    # Count valid signatures
+    validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
+    sp.for signer in self.data.signers:
+      # Check if the given public key is in the signatures list.
+      keyHash = sp.hash_key(signer)
+      sp.if signatures.contains(keyHash):
+        sp.verify(sp.check_signature(signer, signatures[keyHash], sp.pack(cancellationRequest)), "BAD_SIGNATURE")
+        validSignaturesCounter.value += 1
+      
+    # Verify that enough signatures were provided.
+    sp.verify(validSignaturesCounter.value >= self.data.threshold, "TOO_FEW_SIGS")
+
+    # Increment nonce.
+    self.data.nonce += 1
+
+    # Update key data
+    del self.data.timelock[cancellationTarget]
+
+  # Execute a request in the timelock.
+  # Pamrams:
+  # - nonce (nat) The identifier of the nonce to execute.
+  @sp.entry_point
+  def execute(self, nonce):
+      # Get timelock. Will fail if there's no request for nonce.
+      timelockItem = self.data.timelock[nonce]
+      timelockToStart, lambdaToExecute = sp.match_pair(timelockItem)
+
+      # Verify time has been exceeded.
+      execution_time = timelockToStart.add_seconds(sp.to_int(self.data.timelockSeconds))
+      sp.verify(execution_time < sp.now, "TOO_EARLY")
+
+      # Remove item from timelock.
+      del self.data.timelock[nonce]
+
+      # Execute request.
+      operations = lambdaToExecute(sp.unit)
+      sp.set_type(operations, sp.TList(sp.TOperation))
+      sp.add_operations(operations)
 
 ################################################################
 ################################################################
@@ -254,13 +232,13 @@ class StoreValueContract(sp.Contract):
 ################################################################
 ################################################################
 
+Store = sp.import_script_from_url("file:test-helpers/store.py")
+
 ################################################################
-# addExecutionRequest
+# submit
 ################################################################
 
-# TODO(keefertaylor): These tests must test that the nonce has been updated.
-
-@sp.add_test(name = "addExecutionRequest - succeeds with all signatures")
+@sp.add_test(name = "submit - succeeds with all signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -274,8 +252,8 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
@@ -283,7 +261,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -314,7 +292,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -322,11 +300,14 @@ def test():
   # THEN there is one request in the timelock
   scenario.verify(multiSigContract.data.timelock.contains(nonce))
 
+  # THEN the nonce has been updated
+  scenario.verify(multiSigContract.data.nonce == nonce)
+
   # AND the request has the execution time.
   timelockItem = multiSigContract.data.timelock[nonce]
   scenario.verify(sp.fst(timelockItem) == now)
 
-@sp.add_test(name = "addExecutionRequest - succeeds with threshold signatures")
+@sp.add_test(name = "submit - succeeds with threshold signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -340,8 +321,8 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
@@ -349,7 +330,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -376,7 +357,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -384,11 +365,14 @@ def test():
   # THEN there is one request in the timelock
   scenario.verify(multiSigContract.data.timelock.contains(nonce))
 
+  # THEN the nonce has been updated
+  scenario.verify(multiSigContract.data.nonce == nonce)
+
   # AND the request has the execution time.
   timelockItem = multiSigContract.data.timelock[nonce]
   scenario.verify(sp.fst(timelockItem) == now)
 
-@sp.add_test(name = "addExecutionRequest - fails with bad nonce")
+@sp.add_test(name = "submit - fails with bad nonce")
 def test():
   scenario = sp.test_scenario()
 
@@ -402,8 +386,8 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
@@ -411,7 +395,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -440,13 +424,13 @@ def test():
   now = sp.timestamp(123)
 
   # THEN the call fails.
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
   )
 
-@sp.add_test(name = "addExecutionRequest - fails with bad chain id")
+@sp.add_test(name = "submit - fails with bad chain id")
 def test():
   scenario = sp.test_scenario()
 
@@ -460,8 +444,8 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
@@ -469,7 +453,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -497,14 +481,13 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = sp.chain_id_cst("0x0011223344"),
     now = now,
     valid = False
   )
 
-
-@sp.add_test(name = "addExecutionRequest - fails with less than threshold signatures")
+@sp.add_test(name = "submit - fails with less than threshold signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -518,8 +501,8 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
@@ -527,7 +510,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -554,13 +537,13 @@ def test():
   now = sp.timestamp(123)
 
   # THEN it fails.
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
   )
 
-@sp.add_test(name = "addExecutionRequest - does not count invalid signatures")
+@sp.add_test(name = "submit - does not count invalid signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -574,8 +557,8 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/3
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key]
   )
   scenario += multiSigContract
 
@@ -583,7 +566,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -612,20 +595,17 @@ def test():
   now = sp.timestamp(123)
 
   # THEN it fails.
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
   )
 
 ################################################################
-# rotateKeys
+# rotate
 ################################################################
 
-# TODO(keefertaylor): No need for value store contract.
-# TODO(keefertaylor): Ensure nonce checks.
-
-@sp.add_test(name = "rotateKeys - succeeds with all signatures")
+@sp.add_test(name = "rotate - succeeds with all signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -639,17 +619,13 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
   # AND a chain id.
   chainId = sp.chain_id_cst("0x9caecab9")
-
-  # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
-  scenario += storeContract
 
   # AND key data
   newThreshold = sp.nat(2)
@@ -681,7 +657,7 @@ def test():
   }
   signedRotationRequest = (signatures, rotationRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+  scenario += multiSigContract.rotate(signedRotationRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -690,10 +666,10 @@ def test():
   scenario.verify(multiSigContract.data.nonce == nonce)
 
   # AND the key data has been updated.
-  scenario.verify(multiSigContract.data.signers_threshold == newThreshold)
-  scenario.verify_equal(multiSigContract.data.operator_public_keys, newKeyList)
+  scenario.verify(multiSigContract.data.threshold == newThreshold)
+  scenario.verify_equal(multiSigContract.data.signers, newKeyList)
 
-@sp.add_test(name = "rotateKeys - succeeds with threshold signatures")
+@sp.add_test(name = "rotate - succeeds with threshold signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -707,17 +683,13 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
   # AND a chain id.
   chainId = sp.chain_id_cst("0x9caecab9")
-
-  # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
-  scenario += storeContract
 
   # AND key data
   newThreshold = sp.nat(2)
@@ -745,7 +717,7 @@ def test():
   }
   signedRotationRequest = (signatures, rotationRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+  scenario += multiSigContract.rotate(signedRotationRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -754,10 +726,10 @@ def test():
   scenario.verify(multiSigContract.data.nonce == nonce)
 
   # AND the key data has been updated.
-  scenario.verify(multiSigContract.data.signers_threshold == newThreshold)
-  scenario.verify_equal(multiSigContract.data.operator_public_keys, newKeyList)
+  scenario.verify(multiSigContract.data.threshold == newThreshold)
+  scenario.verify_equal(multiSigContract.data.signers, newKeyList)
 
-@sp.add_test(name = "rotateKeys - fails with bad nonce")
+@sp.add_test(name = "rotate - fails with bad nonce")
 def test():
   scenario = sp.test_scenario()
 
@@ -771,17 +743,13 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
   # AND a chain id.
   chainId = sp.chain_id_cst("0x9caecab9")
-
-  # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
-  scenario += storeContract
 
   # AND key data
   newThreshold = sp.nat(2)
@@ -811,13 +779,13 @@ def test():
   now = sp.timestamp(123)
 
   # THEN the call fails.
-  scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+  scenario += multiSigContract.rotate(signedRotationRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
   )
 
-@sp.add_test(name = "rotateKeys - fails with bad chain id")
+@sp.add_test(name = "rotate - fails with bad chain id")
 def test():
   scenario = sp.test_scenario()
 
@@ -831,17 +799,13 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
   # AND a chain id.
   chainId = sp.chain_id_cst("0x9caecab9")
-
-  # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
-  scenario += storeContract
 
   # AND key data
   newThreshold = sp.nat(2)
@@ -870,7 +834,7 @@ def test():
   }
   signedRotationRequest = (signatures, rotationRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+  scenario += multiSigContract.rotate(signedRotationRequest).run(
     chain_id = sp.chain_id_cst("0x0011223344"),
     now = now,
     valid = False
@@ -890,17 +854,13 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/5
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ]
   )
   scenario += multiSigContract
 
   # AND a chain id.
   chainId = sp.chain_id_cst("0x9caecab9")
-
-  # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
-  scenario += storeContract
 
   # AND key data
   newThreshold = sp.nat(2)
@@ -928,13 +888,13 @@ def test():
   now = sp.timestamp(123)
 
   # THEN it fails.
-  scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+  scenario += multiSigContract.rotate(signedRotationRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
   )
 
-@sp.add_test(name = "rotateKeys - does not count invalid signatures")
+@sp.add_test(name = "rotate - does not count invalid signatures")
 def test():
   scenario = sp.test_scenario()
 
@@ -948,17 +908,13 @@ def test():
   # AND a timelock multisig contract with a threshold of 3/3
   threshhold = 3
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key]
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key]
   )
   scenario += multiSigContract
 
   # AND a chain id.
   chainId = sp.chain_id_cst("0x9caecab9")
-
-  # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
-  scenario += storeContract
 
   # AND key data
   newThreshold = sp.nat(2)
@@ -988,18 +944,15 @@ def test():
   now = sp.timestamp(123)
 
   # THEN it fails.
-  scenario += multiSigContract.rotateKeys(signedRotationRequest).run(
+  scenario += multiSigContract.rotate(signedRotationRequest).run(
     chain_id = chainId,
     now = now,
     valid = False
   )
 
-
 ################################################################
 # cancel
 ################################################################
-
-# TODO(keefertaylor): nonces
 
 @sp.add_test(name = "cancel - succeeds with all signatures")
 def test():
@@ -1016,13 +969,13 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   chainId = sp.chain_id_cst("0x9caecab9")
@@ -1047,7 +1000,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1100,13 +1053,13 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   chainId = sp.chain_id_cst("0x9caecab9")
@@ -1131,7 +1084,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1180,13 +1133,13 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   chainId = sp.chain_id_cst("0x9caecab9")
@@ -1211,7 +1164,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1256,13 +1209,13 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   chainId = sp.chain_id_cst("0x9caecab9")
@@ -1287,7 +1240,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1330,13 +1283,13 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   chainId = sp.chain_id_cst("0x9caecab9")
@@ -1361,7 +1314,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1404,13 +1357,13 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   chainId = sp.chain_id_cst("0x9caecab9")
@@ -1435,7 +1388,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1484,9 +1437,9 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
@@ -1494,11 +1447,10 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
-  # TODO(keefertaylor): enable
   newValue = sp.nat(1)
   def updateLambda(unitParam):
     sp.set_type(unitParam, sp.TUnit)
@@ -1522,7 +1474,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1538,8 +1490,7 @@ def test():
 
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == newValue)
-
-
+  
 @sp.add_test(name = "execute - fails before timelock")
 def test():
   scenario = sp.test_scenario()
@@ -1555,9 +1506,9 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
@@ -1565,7 +1516,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value
@@ -1592,7 +1543,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1618,9 +1569,9 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
@@ -1628,7 +1579,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND a lambda is to update the value twice.
@@ -1658,7 +1609,7 @@ def test():
   }
   signedExecutionRequest = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest).run(
+  scenario += multiSigContract.submit(signedExecutionRequest).run(
     chain_id = chainId,
     now = now
   )
@@ -1690,9 +1641,9 @@ def test():
   threshhold = 3
   timelockSeconds = sp.nat(1)
   multiSigContract = MultiSigTimelock(
-    signers_threshold = threshhold,
-    operator_public_keys = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
-    timelock_seconds = timelockSeconds
+    threshold = threshhold,
+    signers = [ alice.public_key, bob.public_key, charlie.public_key, dan.public_key, eve.public_key ],
+    timelockSeconds = timelockSeconds
   )
   scenario += multiSigContract
 
@@ -1700,7 +1651,7 @@ def test():
   chainId = sp.chain_id_cst("0x9caecab9")
 
   # AND a store value contract with the multisig as the admin.
-  storeContract = StoreValueContract(value = 0, admin = multiSigContract.address)
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
   scenario += storeContract
 
   # AND two lambdas are provided.
@@ -1736,7 +1687,7 @@ def test():
   }
   signedExecutionRequest1 = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest1).run(
+  scenario += multiSigContract.submit(signedExecutionRequest1).run(
     chain_id = chainId,
     now = now
   )
@@ -1757,7 +1708,7 @@ def test():
   }
   signedExecutionRequest2 = (signatures, executionRequest)
   now = sp.timestamp(123)
-  scenario += multiSigContract.addExecutionRequest(signedExecutionRequest2).run(
+  scenario += multiSigContract.submit(signedExecutionRequest2).run(
     chain_id = chainId,
     now = now
   )  
