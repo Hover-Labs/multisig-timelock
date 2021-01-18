@@ -20,9 +20,9 @@ $ ./compile.sh
 ## Contract Parameters
 
 The contract can be configured with the following parameters:
-`threshold` (`nat`): The number of signers required to submit an operation
-`signers` (`list(key)`): A list of public keys which can sign an operation
-`timelockSeconds` (`nat`): The number of seconds operations must remain in a timelock before they can be executed. 
+- `threshold` (`nat`): The number of signers required to submit an operation
+- `signers` (`list(key)`): A list of public keys which can sign an operation
+- `timelockSeconds` (`nat`): The number of seconds operations must remain in a timelock before they can be executed. 
 
 ## Contract Specification
 
