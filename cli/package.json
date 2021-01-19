@@ -1,6 +1,6 @@
 {
   "name": "@tessellatedgeometry/tezos-msig-cli",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "CLI Client for Tezos timelock multisig.",
   "main": "build/src/index.js",
   "files": [
