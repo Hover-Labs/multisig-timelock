@@ -23,13 +23,13 @@ KEY_DATA_TYPE = sp.TPair(sp.TNat, sp.TList(sp.TKey))
 # Type for a request for execution.
 # Params:
 # - chainId (chainID) The chain id to execute on.
-# - nonce (nat) The nonce of the contract
+# - operationId (nat) The operation id of the contract
 # - payload (LAMBDA_TYPE) The lambda to execute.
 EXECUTION_REQUEST_TYPE = sp.TPair(sp.TChainId, sp.TPair(sp.TNat, LAMBDA_TYPE))
 
 # Type for a request to cancel.
 # - chainId (chainID) The chain id to execute on.
-# - nonce (nat) The nonce of the contract
+# - operationId (nat) The operation id of the contract
 # - timelockId (nat) The id in the timelock to cancel.
 CANCELLATION_REQUEST_TYPE = sp.TPair(sp.TChainId, sp.TPair(sp.TNat, sp.TNat))
 
@@ -53,7 +53,7 @@ TIMELOCK_TYPE = sp.TPair(sp.TTimestamp, LAMBDA_TYPE)
 
 # Type for a request to roate keys.
 # - chainId (chainID) The chain id to execute on.
-# - nonce (nat) The nonce of the contract
+# - operationId (nat) The operation Id of the contract
 # - payload (KEY_DATA_TYPE) The lambda to execute.
 KEY_ROTATION_REQUEST_TYPE = sp.TPair(sp.TChainId, sp.TPair(sp.TNat, KEY_DATA_TYPE))
 
@@ -79,12 +79,12 @@ class MultiSigTimelock(sp.Contract):
     signers = [sp.key("edpkuX2icxnt5krjTJAmNv8uNJNiQtFmDy9Hzj6SF1f6e3NjT4LXKB")]
   ):
     self.init(
-      nonce=sp.nat(0), 
+      operationId=sp.nat(0), 
       threshold=threshold,
       signers=signers,
       timelockSeconds = timelockSeconds,
 
-      # Map of <nonce>:<execution request>
+      # Map of <operationId>:<execution request>
       timelock = sp.big_map(
         l = {},
         tkey = sp.TNat,
@@ -103,13 +103,13 @@ class MultiSigTimelock(sp.Contract):
 
     # Destructure execution request
     chainId, innerPair = sp.match_pair(executionRequest)
-    nonce, lambdaToExecute = sp.match_pair(innerPair)
+    operationId, lambdaToExecute = sp.match_pair(innerPair)
 
     # Verify ChainID
     sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
     
-    # Verify Nonce
-    sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+    # Verify Operation ID
+    sp.verify(operationId == self.data.operationId + 1, "BAD_OP_ID")
 
     # Count valid signatures
     validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
@@ -123,11 +123,11 @@ class MultiSigTimelock(sp.Contract):
     # Verify that enough signatures were provided.
     sp.verify(validSignaturesCounter.value >= self.data.threshold, "TOO_FEW_SIGS")
 
-    # Increment nonce.
-    self.data.nonce += 1
+    # Increment operation ID.
+    self.data.operationId += 1
 
     # Add to timelock.
-    self.data.timelock[self.data.nonce] = (sp.now, lambdaToExecute)
+    self.data.timelock[self.data.operationId] = (sp.now, lambdaToExecute)
 
   # Rotate keys, assuming the request has been properly signed.
   # Param:
@@ -140,13 +140,13 @@ class MultiSigTimelock(sp.Contract):
 
     # Destructure key request
     chainId, innerPair = sp.match_pair(keyRotationRequest)
-    nonce, keyData = sp.match_pair(innerPair)
+    operationId, keyData = sp.match_pair(innerPair)
 
     # Verify ChainID
     sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
     
-    # Verify Nonce
-    sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+    # Verify Operation ID
+    sp.verify(operationId == self.data.operationId + 1, "BAD_OP_ID")
 
     # Count valid signatures
     validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
@@ -160,8 +160,8 @@ class MultiSigTimelock(sp.Contract):
     # Verify that enough signatures were provided.
     sp.verify(validSignaturesCounter.value >= self.data.threshold, "TOO_FEW_SIGS")
 
-    # Increment nonce.
-    self.data.nonce += 1
+    # Increment operation ID.
+    self.data.operationId += 1
 
     # Update key data
     threshold, keyList = sp.match_pair(keyData)
@@ -179,13 +179,13 @@ class MultiSigTimelock(sp.Contract):
 
     # Destructure cancellation request
     chainId, innerPair = sp.match_pair(cancellationRequest)
-    nonce, cancellationTarget = sp.match_pair(innerPair)
+    operationId, cancellationTarget = sp.match_pair(innerPair)
 
     # Verify ChainID
     sp.verify_equal(chainId, sp.chain_id, "BAD_CHAIN_ID")
     
-    # Verify Nonce
-    sp.verify(nonce == self.data.nonce + 1, "BAD_NONCE")
+    # Verify Operation ID
+    sp.verify(operationId == self.data.operationId + 1, "BAD_OP_ID")
 
     # Count valid signatures
     validSignaturesCounter = sp.local('valid_signatures_counter', sp.nat(0))
@@ -199,19 +199,19 @@ class MultiSigTimelock(sp.Contract):
     # Verify that enough signatures were provided.
     sp.verify(validSignaturesCounter.value >= self.data.threshold, "TOO_FEW_SIGS")
 
-    # Increment nonce.
-    self.data.nonce += 1
+    # Increment operation ID.
+    self.data.operationId += 1
 
     # Update key data
     del self.data.timelock[cancellationTarget]
 
   # Execute a request in the timelock.
   # Pamrams:
-  # - nonce (nat) The identifier of the nonce to execute.
+  # - operationId (nat) The identifier of the operation ID to execute.
   @sp.entry_point
-  def execute(self, nonce):
-      # Get timelock. Will fail if there's no request for nonce.
-      timelockItem = self.data.timelock[nonce]
+  def execute(self, operationId):
+      # Get timelock. Will fail if there's no request for the operation ID.
+      timelockItem = self.data.timelock[operationId]
       timelockToStart, lambdaToExecute = sp.match_pair(timelockItem)
 
       # Verify time has been exceeded.
@@ -219,7 +219,7 @@ class MultiSigTimelock(sp.Contract):
       sp.verify(execution_time < sp.now, "TOO_EARLY")
 
       # Remove item from timelock.
-      del self.data.timelock[nonce]
+      del self.data.timelock[operationId]
 
       # Execute request.
       operations = lambdaToExecute(sp.unit)
@@ -272,8 +272,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is correctly signed by all parties.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   aliceSignature = sp.make_signature(alice.secret_key, executionRequestBytes)
@@ -298,13 +298,13 @@ def test():
   )
 
   # THEN there is one request in the timelock
-  scenario.verify(multiSigContract.data.timelock.contains(nonce))
+  scenario.verify(multiSigContract.data.timelock.contains(operationId))
 
-  # THEN the nonce has been updated
-  scenario.verify(multiSigContract.data.nonce == nonce)
+  # THEN the operationId has been updated
+  scenario.verify(multiSigContract.data.operationId == operationId)
 
   # AND the request has the execution time.
-  timelockItem = multiSigContract.data.timelock[nonce]
+  timelockItem = multiSigContract.data.timelock[operationId]
   scenario.verify(sp.fst(timelockItem) == now)
 
 @sp.add_test(name = "submit - succeeds with threshold signatures")
@@ -341,8 +341,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -363,16 +363,16 @@ def test():
   )
 
   # THEN there is one request in the timelock
-  scenario.verify(multiSigContract.data.timelock.contains(nonce))
+  scenario.verify(multiSigContract.data.timelock.contains(operationId))
 
-  # THEN the nonce has been updated
-  scenario.verify(multiSigContract.data.nonce == nonce)
+  # THEN the operationId has been updated
+  scenario.verify(multiSigContract.data.operationId == operationId)
 
   # AND the request has the execution time.
-  timelockItem = multiSigContract.data.timelock[nonce]
+  timelockItem = multiSigContract.data.timelock[operationId]
   scenario.verify(sp.fst(timelockItem) == now)
 
-@sp.add_test(name = "submit - fails with bad nonce")
+@sp.add_test(name = "submit - fails with bad operationId")
 def test():
   scenario = sp.test_scenario()
 
@@ -405,9 +405,9 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  # AND a payload is correctly with a bad nonce
-  nonce = 4 # Obviously wrong.
-  executionRequest = (chainId, (nonce, updateLambda))
+  # AND a payload is correctly with a bad operationId
+  operationId = 4 # Obviously wrong.
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -464,8 +464,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -521,8 +521,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is correctly signed by less than the threshold.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -577,8 +577,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is signed by 3 signatures but 2 are invalid.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   charlieSignature = sp.make_signature(charlie.secret_key, executionRequestBytes)
@@ -637,8 +637,8 @@ def test():
   newKeyData = (newThreshold, newKeyList)
 
   # AND a payload is correctly signed by all parties.
-  nonce = 1
-  rotationRequest = (chainId, (nonce, newKeyData))
+  operationId = 1
+  rotationRequest = (chainId, (operationId, newKeyData))
   rotationRequestBytes = sp.pack(rotationRequest)
 
   aliceSignature = sp.make_signature(alice.secret_key, rotationRequestBytes)
@@ -662,8 +662,8 @@ def test():
     now = now
   )
 
-  # THEN the nonce has been updated
-  scenario.verify(multiSigContract.data.nonce == nonce)
+  # THEN the operationId has been updated
+  scenario.verify(multiSigContract.data.operationId == operationId)
 
   # AND the key data has been updated.
   scenario.verify(multiSigContract.data.threshold == newThreshold)
@@ -701,8 +701,8 @@ def test():
   newKeyData = (newThreshold, newKeyList)
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  rotationRequest = (chainId, (nonce, newKeyData))
+  operationId = 1
+  rotationRequest = (chainId, (operationId, newKeyData))
   rotationRequestBytes = sp.pack(rotationRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, rotationRequestBytes)
@@ -722,14 +722,14 @@ def test():
     now = now
   )
 
-  # THEN the nonce has been updated
-  scenario.verify(multiSigContract.data.nonce == nonce)
+  # THEN the operationId has been updated
+  scenario.verify(multiSigContract.data.operationId == operationId)
 
   # AND the key data has been updated.
   scenario.verify(multiSigContract.data.threshold == newThreshold)
   scenario.verify_equal(multiSigContract.data.signers, newKeyList)
 
-@sp.add_test(name = "rotate - fails with bad nonce")
+@sp.add_test(name = "rotate - fails with bad operationId")
 def test():
   scenario = sp.test_scenario()
 
@@ -760,9 +760,9 @@ def test():
 
   newKeyData = (newThreshold, newKeyList)
 
-  # AND a payload is correctly with a bad nonce
-  nonce = 4 # Obviously wrong.
-  rotationRequest = (chainId, (nonce, newKeyData))
+  # AND a payload is correctly with a bad operationId
+  operationId = 4 # Obviously wrong.
+  rotationRequest = (chainId, (operationId, newKeyData))
   rotationRequestBytes = sp.pack(rotationRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, rotationRequestBytes)
@@ -817,8 +817,8 @@ def test():
   newKeyData = (newThreshold, newKeyList)
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  rotationRequest = (chainId, (nonce, newKeyData))
+  operationId = 1
+  rotationRequest = (chainId, (operationId, newKeyData))
   rotationRequestBytes = sp.pack(rotationRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, rotationRequestBytes)
@@ -872,8 +872,8 @@ def test():
   newKeyData = (newThreshold, newKeyList)
 
   # AND a payload is correctly signed by less than the threshold.
-  nonce = 1
-  rotationRequest = (chainId, (nonce, newKeyData))
+  operationId = 1
+  rotationRequest = (chainId, (operationId, newKeyData))
   rotationRequestBytes = sp.pack(rotationRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, rotationRequestBytes)
@@ -926,8 +926,8 @@ def test():
   newKeyData = (newThreshold, newKeyList)
 
   # AND a payload is signed by 3 signatures but 2 are invalid.
-  nonce = 1
-  rotationRequest = (chainId, (nonce, newKeyData))
+  operationId = 1
+  rotationRequest = (chainId, (operationId, newKeyData))
   rotationRequestBytes = sp.pack(rotationRequest)
 
   charlieSignature = sp.make_signature(charlie.secret_key, rotationRequestBytes)
@@ -985,8 +985,8 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1006,7 +1006,7 @@ def test():
   )
 
   # AND a cancellation request
-  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequest = (chainId, (operationId + 1, operationId))
 
   # AND a payload is correctly signed by all parties.
   cancellationRequestBytes = sp.pack(cancellationRequest)
@@ -1033,10 +1033,10 @@ def test():
   )
 
   # THEN the timelock is cleared.
-  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId) == False)
 
-  # AND the nonce is incremented.
-  scenario.verify(multiSigContract.data.nonce == nonce + 1)
+  # AND the operationId is incremented.
+  scenario.verify(multiSigContract.data.operationId == operationId + 1)
 
 @sp.add_test(name = "cancel - succeeds with threshold signatures")
 def test():
@@ -1069,8 +1069,8 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1090,7 +1090,7 @@ def test():
   )
 
   # AND a cancellation request
-  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequest = (chainId, (operationId + 1, operationId))
 
   # AND a payload is correctly signed by 3 parties.
   cancellationRequestBytes = sp.pack(cancellationRequest)
@@ -1113,12 +1113,12 @@ def test():
   )
 
   # THEN the timelock is cleared.
-  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId) == False)
 
-  # AND the nonce is incremented.
-  scenario.verify(multiSigContract.data.nonce == nonce + 1)
+  # AND the operationId is incremented.
+  scenario.verify(multiSigContract.data.operationId == operationId + 1)
 
-@sp.add_test(name = "cancel - fails with bad nonce")
+@sp.add_test(name = "cancel - fails with bad operationId")
 def test():
   scenario = sp.test_scenario()
 
@@ -1149,8 +1149,8 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1169,9 +1169,9 @@ def test():
     now = now
   )
 
-  # AND a cancellation request with a bad nonce
-  badNonce = 4 # obviously wrong.
-  cancellationRequest = (chainId, (badNonce, nonce))
+  # AND a cancellation request with a bad operationId
+  badOperationId = 4 # obviously wrong.
+  cancellationRequest = (chainId, (badOperationId, operationId))
   cancellationRequestBytes = sp.pack(cancellationRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
@@ -1225,8 +1225,8 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1246,7 +1246,7 @@ def test():
   )
 
   # AND a cancellation request
-  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequest = (chainId, (operationId + 1, operationId))
   cancellationRequestBytes = sp.pack(cancellationRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, cancellationRequestBytes)
@@ -1299,8 +1299,8 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1320,7 +1320,7 @@ def test():
   )
 
   # AND a cancellation request
-  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequest = (chainId, (operationId + 1, operationId))
   cancellationRequestBytes = sp.pack(cancellationRequest)
 
   # AND a payload is correctly signed by less than the threshold.
@@ -1373,8 +1373,8 @@ def test():
     storeContractHandle = sp.contract(sp.TNat, storeContract.address, 'replace').open_some()
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   aliceSignature = sp.make_signature(alice.secret_key, executionRequestBytes)
@@ -1394,7 +1394,7 @@ def test():
   )
 
   # AND a cancellation request
-  cancellationRequest = (chainId, (nonce + 1, nonce))
+  cancellationRequest = (chainId, (operationId + 1, operationId))
   cancellationRequestBytes = sp.pack(cancellationRequest)
 
   # AND a payload is signed by 3 signatures but 2 are invalid.
@@ -1458,8 +1458,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1481,12 +1481,12 @@ def test():
 
   # WHEN execute is called after the timelock.
   now = now.add_seconds(timelockSeconds * 2)
-  scenario += multiSigContract.execute(nonce).run(
+  scenario += multiSigContract.execute(operationId).run(
     now = now
   )
 
   # THEN the timelock is cleared
-  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId) == False)
 
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == newValue)
@@ -1527,8 +1527,8 @@ def test():
     sp.result([sp.transfer_operation(newValue, sp.mutez(0), storeContractHandle)])
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1549,7 +1549,7 @@ def test():
   )
 
   # WHEN execute is called at the same time THEN it fails.
-  scenario += multiSigContract.execute(nonce).run(
+  scenario += multiSigContract.execute(operationId).run(
     now = now,
     valid = False
   )
@@ -1593,8 +1593,8 @@ def test():
     ])
 
   # AND a payload is correctly signed by 3 parties.
-  nonce = 1
-  executionRequest = (chainId, (nonce, updateLambda))
+  operationId = 1
+  executionRequest = (chainId, (operationId, updateLambda))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1616,12 +1616,12 @@ def test():
 
   # WHEN execute is called after the timelock.
   now = now.add_seconds(timelockSeconds * 2)
-  scenario += multiSigContract.execute(nonce).run(
+  scenario += multiSigContract.execute(operationId).run(
     now = now
   )
 
   # THEN the timelock is cleared
-  scenario.verify(multiSigContract.data.timelock.contains(nonce) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId) == False)
 
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == finalValue)  
@@ -1672,8 +1672,8 @@ def test():
     ])
 
   # AND lambda1's payload is correctly signed by 3 parties and added to the timelock
-  nonce1 = 1
-  executionRequest = (chainId, (nonce1, updateLambda1))
+  operationId1 = 1
+  executionRequest = (chainId, (operationId1, updateLambda1))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1693,8 +1693,8 @@ def test():
   )
 
   # AND lambda2's payload is correctly signed by 3 parties and added to the timelock
-  nonce2 = 2
-  executionRequest = (chainId, (nonce2, updateLambda2))
+  operationId2 = 2
+  executionRequest = (chainId, (operationId2, updateLambda2))
   executionRequestBytes = sp.pack(executionRequest)
 
   bobSignature = sp.make_signature(bob.secret_key, executionRequestBytes)
@@ -1715,26 +1715,26 @@ def test():
 
   # WHEN lambad1 is executed
   now = now.add_seconds(timelockSeconds * 2)
-  scenario += multiSigContract.execute(nonce1).run(
+  scenario += multiSigContract.execute(operationId1).run(
     now = now
   )
 
   # THEN the first timelock is executed and the second still exists.
-  scenario.verify(multiSigContract.data.timelock.contains(nonce1) == False)
-  scenario.verify(multiSigContract.data.timelock.contains(nonce2) == True)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId1) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId2) == True)
 
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == lambdaValue1)  
 
   # WHEN lambad2 is executed
   now = now.add_seconds(timelockSeconds * 2)
-  scenario += multiSigContract.execute(nonce2).run(
+  scenario += multiSigContract.execute(operationId2).run(
     now = now
   )
 
   # THEN the first timelock is executed and the second still exists.
-  scenario.verify(multiSigContract.data.timelock.contains(nonce1) == False)
-  scenario.verify(multiSigContract.data.timelock.contains(nonce2) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId1) == False)
+  scenario.verify(multiSigContract.data.timelock.contains(operationId2) == False)
 
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == lambdaValue2)  

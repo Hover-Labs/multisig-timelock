@@ -21,7 +21,7 @@ import {
 import * as commander from 'commander'
 import { OperationData } from './types'
 
-const version = '0.0.7'
+const version = '0.0.8'
 
 const program = new commander.Command()
 program.version(version)
@@ -84,8 +84,8 @@ program
     'The address of the multisig contract.',
   )
   .option(
-    '--nonce <number>',
-    'The nonce to use, or undefined. If undefined, the nonce will be fetched automatically.',
+    '--operation-id <number>',
+    'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
   .option(
     '--auto',
@@ -105,7 +105,7 @@ program
     await bytesToSubmit(
       operation,
       commandObject.nodeUrl,
-      commandObject.nonce,
+      commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.auto,
     )
@@ -126,8 +126,8 @@ program
     'The address of the multisig contract.',
   )
   .option(
-    '--nonce <number>',
-    'The nonce to use, or undefined. If undefined, the nonce will be fetched automatically.',
+    '--operation-id <number>',
+    'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
   .option(
     '--auto',
@@ -143,7 +143,7 @@ program
       commandObject.threshold,
       keys,
       commandObject.nodeUrl,
-      commandObject.nonce,
+      commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.auto,
     )
@@ -160,8 +160,8 @@ program
     'The address of the multisig contract.',
   )
   .option(
-    '--nonce <number>',
-    'The nonce to use, or undefined. If undefined, the nonce will be fetched automatically.',
+    '--operation-id <number>',
+    'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
   .option(
     '--auto',
@@ -174,7 +174,7 @@ program
     await cancelbytesToSubmit(
       commandObject.operationId,
       commandObject.nodeUrl,
-      commandObject.nonce,
+      commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.auto,
     )
@@ -199,8 +199,8 @@ program
     "Pairs of public key hashes and signatures, separated by colors. Ex: 'tz1abc:edsig123,tz2def:edsig456'",
   )
   .option(
-    '--nonce <number>',
-    'The nonce to use, or undefined. If undefined, the nonce will be fetched automatically.',
+    '--operation-id <number>',
+    'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
   .option(
     '--auto',
@@ -225,7 +225,7 @@ program
       commandObject.operationId,
       addresses,
       signatures,
-      commandObject.nonce,
+      commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.nodeUrl,
       commandObject.privateKey,
@@ -256,8 +256,8 @@ program
     "Pairs of public key hashes and signatures, separated by colors. Ex: 'tz1abc:edsig123,tz2def:edsig456'",
   )
   .option(
-    '--nonce <number>',
-    'The nonce to use, or undefined. If undefined, the nonce will be fetched automatically.',
+    '--operation-id <number>',
+    'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
   .option(
     '--auto',
@@ -286,7 +286,7 @@ program
       keys,
       addresses,
       signatures,
-      commandObject.nonce,
+      commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.nodeUrl,
       commandObject.privateKey,
@@ -320,7 +320,7 @@ program
     '--signatures <string>',
     "Pairs of public key hashes and signatures, separated by colors. Ex: 'tz1abc:edsig123,tz2def:edsig456'",
   )
-  .option('--nonce <number>', 'The nonce to use, or undefined.')
+  .option('--operation-id <number>', 'The operation ID to use, or undefined.')
   .option(
     '--auto',
     '[Experimental: Likely to fail] Attempt to automatically inject the operation',
@@ -351,7 +351,7 @@ program
       operation,
       addresses,
       signatures,
-      commandObject.nonce,
+      commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.nodeUrl,
       commandObject.privateKey,

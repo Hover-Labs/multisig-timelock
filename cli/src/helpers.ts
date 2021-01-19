@@ -17,13 +17,13 @@ import Constants from './constants'
 /** Common Functions */
 
 /**
- * Retrieve the nonce for a multisig contract.
+ * Retrieve the current operation ID for a multisig contract.
  *
  * @param multiSigContractAddress The address of the multisig contract.
  * @param nodeUrl The URL of the Tezos node to use.
- * @returns The current nonce
+ * @returns The current operation ID
  */
-export const getNonce = async (
+export const getOperationId = async (
   multiSigContractAddress: address,
   nodeUrl: url,
 ): Promise<number> => {
@@ -31,15 +31,16 @@ export const getNonce = async (
 
   const multiSigContract = await tezos.contract.at(multiSigContractAddress)
   const multiSigStorage: any = await multiSigContract.storage()
-  const nonce: BigNumber = await multiSigStorage.nonce
+  const operationId: BigNumber = await multiSigStorage.operationId
 
-  return nonce.toNumber()
+  return operationId.toNumber()
 }
 
 /**
  * Retrieve the chain ID the given node is running on.
+ * 
  * @param nodeUrl The URL of the Tezos node to use.
- * @returns The current nonce
+ * @returns The chain ID.
  */
 export const getChainId = async (nodeUrl: url): Promise<chainId> => {
   const tezos = new TezosToolkit(nodeUrl)

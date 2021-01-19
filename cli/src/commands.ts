@@ -2,7 +2,7 @@ import Utils from './utils'
 import { OperationData, url, address, publicKey } from './types'
 import {
   getChainId,
-  getNonce,
+  getOperationId,
   compileOperation,
   loadContract,
   deployContract,
@@ -26,32 +26,32 @@ const CONTRACT_SOURCE = `${__dirname}/msig-timelock.tz`
  *
  * @param operation The operation to encode.
  * @param nodeUrl The URL of the tezos node.
- * @param nonce The nonce to use. If undefined, a nonce will be fetched from the multisig contract.
+ * @param operationId The operationId to use. If undefined, a operationId will be fetched from the multisig contract.
  * @param multiSigContractAddress The address of the multisig contract.
  * @param attemptAutomatic Attempt to automatically produce bytes.
  */
 export const bytesToSubmit = async (
   operation: OperationData,
   nodeUrl: url,
-  nonce: number | undefined,
+  operationId: number | undefined,
   multiSigContractAddress: address,
   attemptAutomatic: boolean,
 ): Promise<void> => {
   const chainId = await getChainId(nodeUrl)
-  const actualNonce = nonce
-    ? nonce
-    : (await getNonce(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId = operationId
+    ? operationId
+    : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
   const lambda = compileOperation(operation)
-  const michelson = `Pair "${chainId}" (Pair ${actualNonce} ${lambda})`
+  const michelson = `Pair "${chainId}" (Pair ${actualOperationId} ${lambda})`
 
   Utils.print('Data to encode')
-  Utils.print(`Pair "${chainId}" (Pair ${actualNonce} ${lambda})'`)
+  Utils.print(`Pair "${chainId}" (Pair ${actualOperationId} ${lambda})'`)
   Utils.print(``)
 
   Utils.print('Encode bytes with: ')
   Utils.print(
-    `tezos-client -E ${nodeUrl} hash data 'Pair "${chainId}" (Pair ${actualNonce} ${lambda})' of type 'pair chain_id (pair nat (lambda unit (list operation)))'`,
+    `tezos-client -E ${nodeUrl} hash data 'Pair "${chainId}" (Pair ${actualOperationId} ${lambda})' of type 'pair chain_id (pair nat (lambda unit (list operation)))'`,
   )
   Utils.print('')
 
@@ -83,7 +83,7 @@ export const bytesToSubmit = async (
  * @param threshold The new signing threshhold.
  * @param keyList The new list of keys.
  * @param nodeUrl The URL of the tezos node.
- * @param nonce The nonce to use. If undefined, a nonce will be fetched from the multisig contract.
+ * @param operationId The operation ID to use. If undefined, an operation ID will be fetched from the multisig contract.
  * @param multiSigContractAddress The address of the multisig contract.
  * @param attemptAutomatic Attempt to automatically produce bytes.
  */
@@ -91,19 +91,19 @@ export const keyRotationbytesToSubmit = async (
   threshold: number,
   keyList: Array<publicKey>,
   nodeUrl: url,
-  nonce: number | undefined,
+  operationId: number | undefined,
   multiSigContractAddress: address,
   attemptAutomatic: boolean,
 ): Promise<void> => {
   const chainId = await getChainId(nodeUrl)
-  const actualNonce =
-    nonce ? nonce : (await getNonce(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId =
+    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
   const keyListMichelson = keyList.reduce((previous, current) => {
     return `${previous} "${current}";`
   }, '')
 
-  const michelson = `Pair "${chainId}" (Pair ${actualNonce} (Pair ${threshold} {${keyListMichelson}}))`
+  const michelson = `Pair "${chainId}" (Pair ${actualOperationId} (Pair ${threshold} {${keyListMichelson}}))`
 
   Utils.print('Data to encode')
   Utils.print(`${michelson}`)
@@ -140,24 +140,24 @@ export const keyRotationbytesToSubmit = async (
 /**
  * Retrieve bytes to sign for a cancel operation.
  *
- * @param operationId The operation id to cancel.
+ * @param operationIdToCancel The operation id to cancel.
  * @param nodeUrl The URL of the tezos node.
- * @param nonce The nonce to use. If undefined, a nonce will be fetched from the multisig contract.
+ * @param operationId The operation ID to use. If undefined, a operation ID will be fetched from the multisig contract.
  * @param multiSigContractAddress The address of the multisig contract.
  * @param attemptAutomatic Attempt to automatically produce bytes.
  */
 export const cancelbytesToSubmit = async (
-  operationId: number,
+  operationIdToCancel: number,
   nodeUrl: url,
-  nonce: number | undefined,
+  operationId: number | undefined,
   multiSigContractAddress: address,
   attemptAutomatic: boolean,
 ): Promise<void> => {
   const chainId = await getChainId(nodeUrl)
-  const actualNonce =
-    nonce ? nonce : (await getNonce(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId =
+    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
-  const michelson = `Pair "${chainId}" (Pair ${actualNonce} ${operationId})`
+  const michelson = `Pair "${chainId}" (Pair ${actualOperationId} ${operationIdToCancel})`
 
   Utils.print('Data to encode')
   Utils.print(`${michelson}`)
@@ -219,7 +219,7 @@ export const deployMultisig = async (
   )
 
   // Formulate initial storage.
-  // Note: 0 literal is a nonce.
+  // Note: 0 literal is the initial operation ID.
   const storage = `(Pair(Pair 0 { ${michelsonPublicKeyList}}) (Pair ${threshold} (Pair { } ${timelockSeconds})))`
 
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
@@ -252,20 +252,20 @@ export const deployMultisig = async (
 /**
  * Cancels an operation.
  *
- * @param operationId The operation to cancel.
+ * @param operationIdToCancel The operation to cancel.
  * @param addresses Parallel sorted arrays of addresses.
  * @param signatures Parrell sorted array of signatures.
- * @param nonce The nonce.
+ * @param operationId The operation ID to use. If undefined, an operation ID will be fetched from the multisig contract.
  * @param multiSigContractAddress The address of the multisig
  * @param nodeUrl The url of the Tezos node.
  * @param privateKey The private key to sign the transaction with. Only keys starting with edsk are supported.
  * @param attemptAutomatic Attempt to automatically produce bytes.
  */
 export const cancel = async (
-  operationId: number,
+  operationIdToCancel: number,
   addresses: Array<address>,
   signatures: Array<string>,
-  nonce: number,
+  operationId: number | undefined,
   multiSigContractAddress: address,
   nodeUrl: url,
   privateKey: string,
@@ -274,8 +274,11 @@ export const cancel = async (
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
+  const actualOperationId =
+    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+
   Utils.print(`Submitting cancel operation from: ${keyStore.publicKeyHash} `)
-  Utils.print(`Using nonce: ${nonce} `)
+  Utils.print(`Using operation ID: ${actualOperationId} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
@@ -294,10 +297,7 @@ export const cancel = async (
     signaturesMap += `Elt "${address}" "${signature}"; `
   }
 
-  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${nonce} ${operationId}))`
-  Utils.print(`Invoking with param: ${param}`)
-  Utils.print('')
-
+  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${actualOperationId} ${operationIdToCancel}))`
   Utils.print(`Use tezos-client to submit the operation manually.`)
   Utils.print(
     `tezos-client -E ${nodeUrl} transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'cancel'`,
@@ -342,7 +342,7 @@ export const cancel = async (
  * @param keyList The new list of keys.
  * @param addresses Parallel sorted arrays of addresses.
  * @param signatures Parrell sorted array of signatures.
- * @param nonce The nonce.
+ * @param operationId The operation ID to use. If undefined, an operation ID will be fetched from the multisig contract.
  * @param multiSigContractAddress The address of the multisig
  * @param nodeUrl The url of the Tezos node.
  * @param privateKey The private key to sign the transaction with. Only keys starting with edsk are supported.
@@ -353,7 +353,7 @@ export const rotateKey = async (
   keyList: Array<publicKey>,
   addresses: Array<address>,
   signatures: Array<string>,
-  nonce: number,
+  operationId: number | undefined,
   multiSigContractAddress: address,
   nodeUrl: url,
   privateKey: string,
@@ -362,8 +362,12 @@ export const rotateKey = async (
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
+  const actualOperationId =
+    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+
+
   Utils.print(`Submitting rotate from: ${keyStore.publicKeyHash} `)
-  Utils.print(`Using nonce: ${nonce} `)
+  Utils.print(`Using operation ID: ${actualOperationId} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
@@ -385,10 +389,7 @@ export const rotateKey = async (
     signaturesMap += `Elt "${address}" "${signature}"; `
   }
 
-  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${nonce} (Pair ${threshold} {${keyListMichelson}})))`
-  Utils.print(`Invoking with param: ${param}`)
-  Utils.print('')
-
+  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${actualOperationId} (Pair ${threshold} {${keyListMichelson}})))`
   Utils.print(`Use tezos-client to submit the operation manually.`)
   Utils.print(
     `tezos-client -E ${nodeUrl} transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'rotate'`,
@@ -432,7 +433,7 @@ export const rotateKey = async (
  * @param operation The operation
  * @param addresses Parallel sorted arrays of addresses.
  * @param signatures Parrell sorted array of signatures.
- * @param nonce The nonce.
+ * @param operationId The operation ID to use. If undefined, an operation ID will be fetched from the multisig contract.
  * @param multiSigContractAddress The address of the multisig
  * @param nodeUrl The url of the Tezos node.
  * @param privateKey The private key to sign the transaction with. Only keys starting with edsk are supported.
@@ -442,7 +443,7 @@ export const submit = async (
   operation: OperationData,
   addresses: Array<address>,
   signatures: Array<string>,
-  nonce: number | undefined,
+  operationId: number | undefined,
   multiSigContractAddress: address,
   nodeUrl: url,
   privateKey: string,
@@ -452,13 +453,13 @@ export const submit = async (
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   Utils.print(`Submitting operation from: ${keyStore.publicKeyHash} `)
-  Utils.print(`Using nonce: ${nonce} `)
+  Utils.print(`Using operation ID: ${operationId} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
-  const actualNonce =
-    nonce ? nonce : (await getNonce(multiSigContractAddress, nodeUrl)) + 1
-  Utils.print(`Using nonce: ${actualNonce} `)
+  const actualOperationId =
+    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+  Utils.print(`Using operation ID: ${actualOperationId} `)
 
   const counter = await TezosNodeReader.getCounterForAccount(
     nodeUrl,
@@ -476,10 +477,7 @@ export const submit = async (
     signaturesMap += `Elt "${address}" "${signature}"; `
   }
 
-  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${actualNonce} ${lambda}))`
-  Utils.print(`Invoking with param: ${param}`)
-  Utils.print('')
-
+  const param = `Pair { ${signaturesMap} } (Pair "${chainId}" (Pair ${actualOperationId} ${lambda}))`
   Utils.print(`Use tezos-client to submit the operation manually.`)
   Utils.print(
     `tezos-client -E ${nodeUrl} transfer 0 from ${keyStore.publicKeyHash} to ${multiSigContractAddress} --arg '${param}' --entrypoint 'submit'`,
@@ -520,7 +518,7 @@ export const submit = async (
 /**
  * Executes a given operation that is in the timelock.
  *
- * @param operationId The nonce of the operation to execute.
+ * @param operationId The operation ID of the operation to execute.
  * @param multiSigContractAddress The address of the multisig
  * @param nodeUrl The url of the Tezos node.
  * @param privateKey The private key to sign the transaction with. Only keys starting with edsk are supported.
@@ -535,7 +533,7 @@ export const execute = async (
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   Utils.print(`Sending execute from: ${keyStore.publicKeyHash} `)
-  Utils.print(`Using nonce: ${operationId} `)
+  Utils.print(`Using operation ID: ${operationId} `)
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
