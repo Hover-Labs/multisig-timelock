@@ -9,6 +9,6 @@ Prereqs:
 - This package requires SmartPy to be installed in the default location
 
 ```
-$ npm i -g @tessellated-geometry/tezos-msig-cli
+$ npm i -g @hover-labs/tezos-msig-cli
 $ tezos-msig --help
 ```

@@ -1,6 +1,6 @@
 {
-  "name": "@tessellatedgeometry/tezos-msig-cli",
-  "version": "0.0.8",
+  "name": "@hover-labs/tezos-msig-cli",
+  "version": "1.0.0",
   "description": "CLI Client for Tezos timelock multisig.",
   "main": "build/src/index.js",
   "files": [
@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tessellatedgeometry/msig-timelock.git"
+    "url": "git+https://github.com/hover-labs/multisig-timelock.git"
   },
   "keywords": [
     "Tezos",
@@ -26,7 +26,7 @@
     "smart contract",
     "timelock"
   ],
-  "author": "Tessellated Geometry LLC",
+  "author": "Hover Labs Corp",
   "license": "MIT",
   "dependencies": {
     "@types/libsodium-wrappers": "0.7.8",
