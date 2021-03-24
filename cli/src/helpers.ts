@@ -71,6 +71,8 @@ def operation(self):
   operation_list = [ transfer_operation ]
   
   sp.result(operation_list)
+
+sp.add_expression_compilation_target("operation", operation)
 `
 
   // Make a directory and write the program to it.
@@ -81,11 +83,11 @@ def operation(self):
 
   // Compile the operation.
   childProcess.execSync(
-    `~/smartpy-cli/SmartPy.sh compile-expression "${fileName}" "operation" ${dirName}`,
+    `~/smartpy-cli/SmartPy.sh compile ${fileName} ${dirName}`,
   )
 
   // Read the operation back into memory.
-  const outputFile = `${dirName}/operation_michelson.tz`
+  const outputFile = `${dirName}/operation/step_000_expression.tz`
   const compiled = fs.readFileSync(outputFile).toString()
 
   // Cleanup files
