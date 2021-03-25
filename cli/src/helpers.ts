@@ -13,7 +13,6 @@ import { KeyStore, TezosParameterFormat, TezosNodeWriter } from 'conseiljs'
 import Utils from './utils'
 import OperationFeeEstimator from './operation-fee-estimator'
 import Constants from './constants'
-import { type } from 'os'
 
 /** Common Functions */
 
