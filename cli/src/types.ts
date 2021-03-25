@@ -11,6 +11,7 @@ export type OperationData = {
   amountMutez: number
   entrypoint: string
   argSmartPy: string
+  argTypeSmartPy: string | undefined
 }
 
 // Result of originating a contract.

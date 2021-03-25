@@ -21,7 +21,7 @@ import {
 import * as commander from 'commander'
 import { OperationData } from './types'
 
-const version = '1.0.2'
+const version = '1.1.0'
 
 const program = new commander.Command()
 program.version(version)
@@ -84,6 +84,10 @@ program
     'The address of the multisig contract.',
   )
   .option(
+    '--target-arg-type <string>',
+    'The argument, in SmartPy notation(sorry!). Ex. sp.TPair(sp.TNat, sp.TPair(sp.Taddress, sp.TString))',
+  )
+  .option(
     '--operation-id <number>',
     'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
@@ -98,6 +102,7 @@ program
     const operation: OperationData = {
       address: commandObject.targetContract,
       argSmartPy: commandObject.targetArg,
+      argTypeSmartPy: commandObject.targetArgType,
       entrypoint: commandObject.targetEntrypoint,
       amountMutez: 0,
     }
@@ -322,6 +327,10 @@ program
   )
   .option('--operation-id <number>', 'The operation ID to use, or undefined.')
   .option(
+    '--target-arg-type <string>',
+    'The argument, in SmartPy notation(sorry!). Ex. sp.TPair(sp.TNat, sp.TPair(sp.Taddress, sp.TString))',
+  )
+  .option(
     '--auto',
     '[Experimental: Likely to fail] Attempt to automatically inject the operation',
   )
@@ -332,6 +341,7 @@ program
     const operation: OperationData = {
       address: commandObject.targetContract,
       argSmartPy: commandObject.targetArg,
+      argTypeSmartPy: commandObject.targetArgType,
       entrypoint: commandObject.targetEntrypoint,
       amountMutez: 0,
     }
