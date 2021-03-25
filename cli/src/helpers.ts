@@ -13,6 +13,7 @@ import { KeyStore, TezosParameterFormat, TezosNodeWriter } from 'conseiljs'
 import Utils from './utils'
 import OperationFeeEstimator from './operation-fee-estimator'
 import Constants from './constants'
+import { type } from 'os'
 
 /** Common Functions */
 
@@ -38,7 +39,7 @@ export const getOperationId = async (
 
 /**
  * Retrieve the chain ID the given node is running on.
- * 
+ *
  * @param nodeUrl The URL of the Tezos node to use.
  * @returns The chain ID.
  */
@@ -57,15 +58,21 @@ export const getChainId = async (nodeUrl: url): Promise<chainId> => {
  * @returns The compiled michelson.
  */
 export const compileOperation = (operation: OperationData): string => {
+  // If a type was given, inline it into the program. Otherwise no-op
+  const argType =
+    operation.argTypeSmartPy === undefined ? 'None' : operation.argTypeSmartPy
+
   // A simple program that executes the lambda.
   const program = `
 import smartpy as sp
 
 def operation(self):
+  arg = ${operation.argSmartPy}
+
   transfer_operation = sp.transfer_operation(
-    ${operation.argSmartPy},
+    arg,
     sp.mutez(${operation.amountMutez}), 
-    sp.contract(None, sp.address("${operation.address}"), "${operation.entrypoint}"
+    sp.contract(${argType}, sp.address("${operation.address}"), "${operation.entrypoint}"
   ).open_some())
   
   operation_list = [ transfer_operation ]
