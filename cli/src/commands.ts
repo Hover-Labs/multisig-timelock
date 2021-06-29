@@ -36,13 +36,14 @@ export const bytesToSubmit = async (
   operationId: number | undefined,
   multiSigContractAddress: address,
   attemptAutomatic: boolean,
+  smartpyPath: string,
 ): Promise<void> => {
   const chainId = await getChainId(nodeUrl)
   const actualOperationId = operationId
     ? operationId
     : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
-  const lambda = compileOperation(operation)
+  const lambda = compileOperation(operation, smartpyPath)
   const michelson = `Pair "${chainId}" (Pair ${actualOperationId} ${lambda})`
 
   Utils.print('Data to encode')
@@ -96,8 +97,9 @@ export const keyRotationbytesToSubmit = async (
   attemptAutomatic: boolean,
 ): Promise<void> => {
   const chainId = await getChainId(nodeUrl)
-  const actualOperationId =
-    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId = operationId
+    ? operationId
+    : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
   const keyListMichelson = keyList.reduce((previous, current) => {
     return `${previous} "${current}";`
@@ -154,8 +156,9 @@ export const cancelbytesToSubmit = async (
   attemptAutomatic: boolean,
 ): Promise<void> => {
   const chainId = await getChainId(nodeUrl)
-  const actualOperationId =
-    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId = operationId
+    ? operationId
+    : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
   const michelson = `Pair "${chainId}" (Pair ${actualOperationId} ${operationIdToCancel})`
 
@@ -274,8 +277,9 @@ export const cancel = async (
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
-  const actualOperationId =
-    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId = operationId
+    ? operationId
+    : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
   Utils.print(`Submitting cancel operation from: ${keyStore.publicKeyHash} `)
   Utils.print(`Using operation ID: ${actualOperationId} `)
@@ -362,9 +366,9 @@ export const rotateKey = async (
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
-  const actualOperationId =
-    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
-
+  const actualOperationId = operationId
+    ? operationId
+    : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
 
   Utils.print(`Submitting rotate from: ${keyStore.publicKeyHash} `)
   Utils.print(`Using operation ID: ${actualOperationId} `)
@@ -448,6 +452,7 @@ export const submit = async (
   nodeUrl: url,
   privateKey: string,
   attemptAutomatic: boolean,
+  smartpyPath: string,
 ): Promise<void> => {
   const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
@@ -457,8 +462,9 @@ export const submit = async (
 
   await Utils.revealAccountIfNeeded(nodeUrl, keyStore, signer)
 
-  const actualOperationId =
-    operationId ? operationId : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
+  const actualOperationId = operationId
+    ? operationId
+    : (await getOperationId(multiSigContractAddress, nodeUrl)) + 1
   Utils.print(`Using operation ID: ${actualOperationId} `)
 
   const counter = await TezosNodeReader.getCounterForAccount(
@@ -467,7 +473,7 @@ export const submit = async (
   )
 
   const chainId = await getChainId(nodeUrl)
-  const lambda = compileOperation(operation)
+  const lambda = compileOperation(operation, smartpyPath)
 
   let signaturesMap = ''
   for (let i = 0; i < addresses.length; i++) {

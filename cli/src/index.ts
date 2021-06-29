@@ -92,6 +92,11 @@ program
     'The operation ID to use, or undefined. If undefined, the operation ID will be fetched automatically.',
   )
   .option(
+    '--smartpy-path <string>',
+    'The path to find SmartPy at',
+    '~/smartpy-cli/SmartPy.sh',
+  )
+  .option(
     '--auto',
     '[Experimental: Likely to fail] Attempt to automatically formulate bytes.',
   )
@@ -113,6 +118,7 @@ program
       commandObject.operationId,
       commandObject.multisigAddress,
       commandObject.auto,
+      commandObject.smartpyPath,
     )
   })
 
@@ -331,6 +337,11 @@ program
     'The argument, in SmartPy notation(sorry!). Ex. sp.TPair(sp.TNat, sp.TPair(sp.Taddress, sp.TString))',
   )
   .option(
+    '--smartpy-path <string>',
+    'The path to find SmartPy at',
+    '~/smartpy-cli/SmartPy.sh',
+  )
+  .option(
     '--auto',
     '[Experimental: Likely to fail] Attempt to automatically inject the operation',
   )
@@ -366,6 +377,7 @@ program
       commandObject.nodeUrl,
       commandObject.privateKey,
       commandObject.auto,
+      commandObject.smartpyPath,
     )
   })
 
