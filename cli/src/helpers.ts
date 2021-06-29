@@ -54,9 +54,13 @@ export const getChainId = async (nodeUrl: url): Promise<chainId> => {
  * This relies on having SmartPy installed and likely only works on OSX. Sorry!
  *
  * @param operation The operation.
+ * @param smartpyPath The location to find the SmartPy compiler.
  * @returns The compiled michelson.
  */
-export const compileOperation = (operation: OperationData): string => {
+export const compileOperation = (
+  operation: OperationData,
+  smartpyPath: string,
+): string => {
   // If a type was given, inline it into the program. Otherwise no-op
   const argType =
     operation.argTypeSmartPy === undefined ? 'None' : operation.argTypeSmartPy
@@ -84,13 +88,12 @@ sp.add_expression_compilation_target("operation", operation)
   // Make a directory and write the program to it.
   const dirName = `./.msig-cli-tmp`
   const fileName = `${dirName}/operation.py`
+  fs.rmdirSync(dirName, { recursive: true })
   fs.mkdirSync(dirName)
   fs.writeFileSync(fileName, program)
 
   // Compile the operation.
-  childProcess.execSync(
-    `~/smartpy-cli/SmartPy.sh compile ${fileName} ${dirName}`,
-  )
+  childProcess.execSync(`${smartpyPath} compile ${fileName} ${dirName}`)
 
   // Read the operation back into memory.
   const outputFile = `${dirName}/operation/step_000_expression.tz`
