@@ -21,7 +21,7 @@ jobs:
             :lock_with_ink_pen: [[{{ SHORT_SHA }}](<https://github.com/{{ GITHUB_REPOSITORY }}/commit/{{ SHORT_SHA }}>)] [Starting Tezos Multisig build...](<https://github.com/{{ GITHUB_REPOSITORY }}/actions/runs/{{ GITHUB_RUN_ID }}?check_suite_focus=true>)
             ```${{ github.event.head_commit.message }}```
 
-  cli_build_and_deploy_docs:
+  cli_build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,11 +51,30 @@ jobs:
           branch: gh-pages
           folder: docs
 
+  smart_contracts_build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./smart_contracts        
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+    - uses: actions/setup-python@v2
+    - name: "Install SmartPy"
+      run: |
+        curl https://smartpy.io/releases/20210118-6f466eee56038df8fda8b2f77819b83398346296/cli/install.sh | sh -s -- local-install ~/smartpy-cli
+    - name: "Build and Test Smart Contracts"
+      run: |
+        cd smart_contracts
+        ./compile.sh
+    
+
   notify_complete:
     runs-on: ubuntu-latest
     needs:
       - notify_init
-      - cli_build_and_deploy_docs
+      - smart_contracts_build
+      - cli_build
     steps:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV

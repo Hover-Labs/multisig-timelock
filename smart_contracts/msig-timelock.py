@@ -1480,7 +1480,7 @@ def test():
   )
 
   # WHEN execute is called after the timelock.
-  now = now.add_seconds(timelockSeconds * 2)
+  now = now.add_seconds(sp.to_int(timelockSeconds * 2))
   scenario += multiSigContract.execute(operationId).run(
     now = now
   )
@@ -1615,7 +1615,7 @@ def test():
   )
 
   # WHEN execute is called after the timelock.
-  now = now.add_seconds(timelockSeconds * 2)
+  now = now.add_seconds(sp.to_int(timelockSeconds * 2))
   scenario += multiSigContract.execute(operationId).run(
     now = now
   )
@@ -1714,7 +1714,7 @@ def test():
   )  
 
   # WHEN lambad1 is executed
-  now = now.add_seconds(timelockSeconds * 2)
+  now = now.add_seconds(sp.to_int(timelockSeconds * 2))
   scenario += multiSigContract.execute(operationId1).run(
     now = now
   )
@@ -1727,7 +1727,7 @@ def test():
   scenario.verify(storeContract.data.storedValue == lambdaValue1)  
 
   # WHEN lambad2 is executed
-  now = now.add_seconds(timelockSeconds * 2)
+  now = now.add_seconds(sp.to_int(timelockSeconds * 2))
   scenario += multiSigContract.execute(operationId2).run(
     now = now
   )
