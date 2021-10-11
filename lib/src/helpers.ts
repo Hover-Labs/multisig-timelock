@@ -181,7 +181,7 @@ export async function deployContract(
       operationHash,
       contractAddress,
     }
-  } catch (e) {
+  } catch (e: any) {
     Utils.print('Caught exception, retrying...')
     Utils.print(e.message)
     await Utils.sleep(30)

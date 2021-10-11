@@ -51,7 +51,7 @@ jobs:
           branch: gh-pages
           folder: docs
 
-  build_and_deploy_docs:
+  lib_build_and_deploy_docs:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -108,6 +108,7 @@ jobs:
       - notify_init
       - smart_contracts_build
       - cli_build
+      - lib_build_and_deploy_docs
     steps:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
