@@ -51,7 +51,7 @@ jobs:
           branch: gh-pages
           folder: docs
 
-  lib_build_and_deploy_docs:
+  lib_build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -73,9 +73,6 @@ jobs:
       - name: Install dependencies (if the cached directory was not found)
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: npm ci
-
-      - name: Create the docs directory locally in CI
-        run: npm run docs
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.1.4
@@ -108,7 +105,7 @@ jobs:
       - notify_init
       - smart_contracts_build
       - cli_build
-      - lib_build_and_deploy_docs
+      - lib_build
     steps:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
