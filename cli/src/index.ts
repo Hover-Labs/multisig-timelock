@@ -19,7 +19,7 @@ import {
   execute,
 } from './commands'
 import * as commander from 'commander'
-import { OperationData } from './types'
+import { OperationData } from '@hover-labs/tezos-multisig-lib'
 
 const version = '1.1.0'
 
