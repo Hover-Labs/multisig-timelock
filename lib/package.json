@@ -1,6 +1,6 @@
 {
   "name": "@hover-labs/tezos-multisig-lib",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Library for Hover Lab's Multisig Contract",
   "main": "build/src/index.js",
   "files": [
@@ -20,10 +20,20 @@
   "author": "Hover Labs <https://hover.engineering>",
   "license": "MIT",
   "dependencies": {
-    "@taquito/taquito": "^10.2.0",
-    "bignumber": "^1.1.0",
-    "conseiljs": "^5.0.8-3",
-    "conseiljs-softsigner": "^5.0.4-1"
+    "@lapo/asn1js": "^1.2.1",
+    "@taquito/taquito": "8.0.1-beta.1",
+    "@types/libsodium-wrappers": "0.7.8",
+    "@types/node": "14.14.6",
+    "@types/node-fetch": "2.5.7",
+    "@types/secp256k1": "4.0.1",
+    "bignumber.js": "^9.0.1",
+    "commander": "5.1.0",
+    "conseiljs": "^5.0.6-1",
+    "conseiljs-softsigner": "^5.0.3",
+    "libsodium-wrappers": "^0.7.8",
+    "loglevel": "^1.7.1",
+    "node-fetch": "^2.6.1",
+    "secp256k1": "^4.0.2"
   },
   "devDependencies": {
     "@types/node": "^16.10.3",
