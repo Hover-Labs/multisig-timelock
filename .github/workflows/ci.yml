@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - notify_init
-      - build_and_deploy_docs
+      - cli_build_and_deploy_docs
     steps:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
