@@ -65,7 +65,6 @@ jobs:
         curl https://smartpy.io/releases/20210118-6f466eee56038df8fda8b2f77819b83398346296/cli/install.sh | sh -s -- local-install ~/smartpy-cli
     - name: "Build and Test Smart Contracts"
       run: |
-        cd smart_contracts
         ./compile.sh
     
 
