@@ -15,7 +15,7 @@ jobs:
       - name: Discord notification PR
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
+        uses: Ilshidur/action-discord@main
         with:
           args: >
             :lock_with_ink_pen: [[{{ SHORT_SHA }}](<https://github.com/{{ GITHUB_REPOSITORY }}/commit/{{ SHORT_SHA }}>)] [Starting Tezos Multisig build...](<https://github.com/{{ GITHUB_REPOSITORY }}/actions/runs/{{ GITHUB_RUN_ID }}?check_suite_focus=true>)
@@ -49,7 +49,7 @@ jobs:
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.1.4
-        if: github.ref == 'refs/heads/master' # Only deploy on merge to master
+        if: github.ref == 'refs/heads/main' # Only deploy on merge to main
         with:
           branch: gh-pages
           folder: docs
@@ -65,7 +65,7 @@ jobs:
       - name: Discord notification PR
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
+        uses: Ilshidur/action-discord@main
         with:
           args: >
             :lock_with_ink_pen: [[{{ SHORT_SHA }}](<https://github.com/{{ GITHUB_REPOSITORY }}/commit/{{ SHORT_SHA }}>)] [Tezos Multisig built successfully!](<https://github.com/{{ GITHUB_REPOSITORY }}/actions/runs/{{ GITHUB_RUN_ID }}?check_suite_focus=true>)
