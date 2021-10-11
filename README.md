@@ -7,5 +7,6 @@ See each component for more details.
 ## Structure
 
 - `cli/`: Command line interface for working with the contract.
+- `lib/`: NPM library for CLI and integrations.
 - `smart_contracts/`: Smart contract implementation.
 
