@@ -1,17 +1,20 @@
+import Utils from './utils'
+import { OperationData, url, address, publicKey } from './types'
 import {
-  Utils, OperationData, url, address, publicKey, getChainId,
+  getChainId,
   getOperationId,
   compileOperation,
   loadContract,
-  deployContract, OperationFeeEstimator, Constants
-} from '@hover-labs/tezos-multisig-lib'
-
+  deployContract,
+} from './helpers'
 import {
   TezosParameterFormat,
   TezosNodeReader,
   TezosNodeWriter,
   TezosMessageUtils,
 } from 'conseiljs'
+import OperationFeeEstimator from './operation-fee-estimator'
+import Constants from './constants'
 
 /** Constants */
 const CONTRACT_SOURCE = `${__dirname}/msig-timelock.tz`
