@@ -1,0 +1,43 @@
+{
+  "name": "@hover-labs/tezos-multisig-lib",
+  "version": "0.0.1",
+  "description": "Library for Hover Lab's Multisig Contract",
+  "main": "build/src/index.js",
+  "files": [
+    "build/**/*",
+    "src/**/*"
+  ],
+  "scripts": {
+    "build": "npx tsc -d",
+    "watch": "npx tsc -d -w",
+    "docs": "npx typedoc --out docs/ src/",
+    "lint": "npx eslint . --ext .ts --fix",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "Tezos"
+  ],
+  "author": "Hover Labs <https://hover.engineering>",
+  "license": "MIT",
+  "dependencies": {
+    "@taquito/taquito": "^10.2.0",
+    "bignumber": "^1.1.0",
+    "conseiljs": "^5.0.8-3",
+    "conseiljs-softsigner": "^5.0.4-1"
+  },
+  "devDependencies": {
+    "@types/node": "^16.10.3",
+    "@typescript-eslint/eslint-plugin": "^4.31.1",
+    "@typescript-eslint/parser": "^4.31.1",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^6.15.0",
+    "eslint-plugin-import": "^2.24.2",
+    "eslint-plugin-jest": "^24.4.0",
+    "eslint-plugin-mocha": "^8.2.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "prettier": "^2.4.0",
+    "ts-node": "^9.1.1",
+    "typedoc": "^0.22.4",
+    "typescript": "^4.4.3"
+  }
+}
