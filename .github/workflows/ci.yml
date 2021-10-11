@@ -44,9 +44,6 @@ jobs:
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Create the docs directory locally in CI
-        run: npm run docs
-
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.1.4
         if: github.ref == 'refs/heads/main' # Only deploy on merge to main
