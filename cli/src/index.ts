@@ -21,7 +21,7 @@ import {
 import * as commander from 'commander'
 import { OperationData } from '@hover-labs/tezos-multisig-lib'
 
-const version = '1.1.0'
+const version = '1.2.1'
 
 const program = new commander.Command()
 program.version(version)
