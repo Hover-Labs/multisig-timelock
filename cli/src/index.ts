@@ -51,7 +51,7 @@ program
   )
   .requiredOption('--node-url <string>', 'The URL of the node to use')
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     const publicKeys = commandObject.publicKeys.split(',').sort()
@@ -101,7 +101,7 @@ program
     '[Experimental: Likely to fail] Attempt to automatically formulate bytes.',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     const operation: OperationData = {
@@ -145,7 +145,7 @@ program
     '[Experimental: Likely to fail] Attempt to automatically formulate bytes.',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     const keys = commandObject.signers.split(',').sort()
@@ -179,7 +179,7 @@ program
     '[Experimental: Likely to fail] Attempt to automatically formulate bytes.',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     await cancelbytesToSubmit(
@@ -218,7 +218,7 @@ program
     '[Experimental: Likely to fail] Attempt to automatically inject the operation',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     // Create parallel sorted arrays of addresses and signatures, in alphabetical order.
@@ -275,7 +275,7 @@ program
     '[Experimental: Likely to fail] Attempt to automatically inject the operation',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     // Sort new keys.
@@ -346,7 +346,7 @@ program
     '[Experimental: Likely to fail] Attempt to automatically inject the operation',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     const operation: OperationData = {
@@ -396,7 +396,7 @@ program
     'Private key of the submitter, prefixed with edsk.',
   )
   .action(async function (commandObject) {
-    const conseilLogLevel = program.debug ? 'debug' : 'error'
+    const conseilLogLevel = commandObject.debug ? 'debug' : 'error'
     initConseil(conseilLogLevel)
 
     await execute(
