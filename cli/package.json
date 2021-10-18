@@ -1,6 +1,6 @@
 {
   "name": "@hover-labs/tezos-msig-cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "CLI Client for Tezos timelock multisig.",
   "main": "build/src/index.js",
   "files": [
@@ -29,15 +29,17 @@
   "author": "Hover Labs Corp",
   "license": "MIT",
   "dependencies": {
-    "@hover-labs/tezos-multisig-lib": "^0.0.4",
+    "@hover-labs/tezos-multisig-lib": "^0.0.5",
     "commander": "5.1.0",
     "conseiljs": "^5.0.6-1",
+    "libsodium-wrappers": "^0.7.8",
     "loglevel": "^1.7.1",
     "node-fetch": "^2.6.1"
   },
   "devDependencies": {
     "@types/node": "14.14.6",
     "@types/node-fetch": "2.5.7",
+    "@types/libsodium-wrappers": "0.7.8",
     "@typescript-eslint/eslint-plugin": "^4.13.0",
     "@typescript-eslint/parser": "^4.13.0",
     "eslint": "^7.18.0",

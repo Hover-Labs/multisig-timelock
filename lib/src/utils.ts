@@ -21,7 +21,6 @@ import Prefixes from './prefixes'
 /* eslint-disable @typescript-eslint/no-var-requires */
 const base58Check = require('bs58check')
 const blakejs = require('blakejs')
-const sodium = require('libsodium-wrappers')
 const secp256k1 = require('secp256k1')
 /* eslint-enable @typescript-eslint/no-var-requires */
 
@@ -129,34 +128,6 @@ const utils = {
     }
     this.print(`All done!`)
     this.print(``)
-  },
-  /**
-   * Create a Conseil `Keystore` from the given private key.
-   *
-   * @param privateKey A base58check encoded private key, beginning with 'edsk'.
-   * @returns A `Keystore` representing the private key.
-   */
-  async keyStoreFromPrivateKey(privateKey: string): Promise<KeyStore> {
-    if (!privateKey.startsWith('edsk')) {
-      throw new Error('Only edsk keys are supported')
-    }
-
-    // Make sure use did not unwittingly provide a seed.
-    if (privateKey.length === 54) {
-      // Decode and slice the `edsk` prefix.
-      await sodium.ready
-      const decodedBytes = base58Check.decode(privateKey).slice(4)
-      const keyPair = sodium.crypto_sign_seed_keypair(decodedBytes)
-      const derivedPrivateKeyBytes = this.mergeBytes(
-        Prefixes.ed25519SecretKey,
-        keyPair.privateKey,
-      )
-      const derivedPrivateKey = base58Check.encode(derivedPrivateKeyBytes)
-
-      return await KeyStoreUtils.restoreIdentityFromSecretKey(derivedPrivateKey)
-    } else {
-      return await KeyStoreUtils.restoreIdentityFromSecretKey(privateKey)
-    }
   },
 
   /**
