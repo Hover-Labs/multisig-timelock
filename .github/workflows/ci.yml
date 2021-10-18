@@ -44,13 +44,6 @@ jobs:
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@4.1.4
-        if: github.ref == 'refs/heads/main' # Only deploy on merge to main
-        with:
-          branch: gh-pages
-          folder: docs
-
   lib_build:
     runs-on: ubuntu-latest
     defaults:
@@ -73,14 +66,6 @@ jobs:
       - name: Install dependencies (if the cached directory was not found)
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: npm ci
-
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@4.1.4
-        if: github.ref == 'refs/heads/master' # Only deploy on merge to master
-        with:
-          branch: gh-pages
-          folder: docs
-  
 
   smart_contracts_build:
     runs-on: ubuntu-latest
