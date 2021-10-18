@@ -13,6 +13,8 @@ import {
   TezosMessageUtils,
 } from 'conseiljs'
 
+import { keyStoreFromPrivateKey } from './helpers'
+
 /** Constants */
 const CONTRACT_SOURCE = `${__dirname}/msig-timelock.tz`
 
@@ -222,7 +224,7 @@ export const deployMultisig = async (
   // Note: 0 literal is the initial operation ID.
   const storage = `(Pair(Pair 0 { ${michelsonPublicKeyList}}) (Pair ${threshold} (Pair { } ${timelockSeconds})))`
 
-  const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
+  const keyStore = await keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   Utils.print(`Deploying from: ${keyStore.publicKeyHash} `)
@@ -271,7 +273,7 @@ export const cancel = async (
   privateKey: string,
   attemptAutomatic: boolean,
 ): Promise<void> => {
-  const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
+  const keyStore = await keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   const actualOperationId = operationId
@@ -360,7 +362,7 @@ export const rotateKey = async (
   privateKey: string,
   attemptAutomatic: boolean,
 ): Promise<void> => {
-  const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
+  const keyStore = await keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   const actualOperationId = operationId
@@ -451,7 +453,7 @@ export const submit = async (
   attemptAutomatic: boolean,
   smartpyPath: string,
 ): Promise<void> => {
-  const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
+  const keyStore = await keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   Utils.print(`Submitting operation from: ${keyStore.publicKeyHash} `)
@@ -532,7 +534,7 @@ export const execute = async (
   nodeUrl: url,
   privateKey: string,
 ): Promise<void> => {
-  const keyStore = await Utils.keyStoreFromPrivateKey(privateKey)
+  const keyStore = await keyStoreFromPrivateKey(privateKey)
   const signer = await Utils.signerFromKeyStore(keyStore)
 
   Utils.print(`Sending execute from: ${keyStore.publicKeyHash} `)
