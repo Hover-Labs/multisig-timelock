@@ -88,7 +88,12 @@ sp.add_expression_compilation_target("operation", operation)
   // Make a directory and write the program to it.
   const dirName = `./.msig-cli-tmp`
   const fileName = `${dirName}/operation.py`
-  fs.rmdirSync(dirName, { recursive: true })
+  try {
+    fs.rmdirSync(dirName, { recursive: true })
+  } catch (e) {
+    // Intentionally do nothing - if the rmdirsync call failed the directory 
+    // is simply not present.
+  }
   fs.mkdirSync(dirName)
   fs.writeFileSync(fileName, program)
 
