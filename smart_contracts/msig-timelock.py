@@ -237,7 +237,7 @@ class MultiSigTimelock(sp.Contract):
 ################################################################
 ################################################################
 
-Store = sp.io.import_script_from_url("file:test-helpers/store.py")
+Store = sp.import_script_from_url("file:test-helpers/store.py")
 
 ################################################################
 # submit
