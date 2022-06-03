@@ -29,7 +29,7 @@
   "author": "Hover Labs Corp",
   "license": "MIT",
   "dependencies": {
-    "@hover-labs/tezos-multisig-lib": "^0.0.13n",
+    "@hover-labs/tezos-multisig-lib": "^0.0.13",
     "commander": "5.1.0",
     "conseiljs": "^5.0.6-1",
     "libsodium-wrappers": "^0.7.8",
