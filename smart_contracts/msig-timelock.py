@@ -225,6 +225,22 @@ class MultiSigTimelock(sp.Contract):
       operations = lambdaToExecute(sp.unit)
       sp.set_type(operations, sp.TList(sp.TOperation))
       sp.add_operations(operations)
+        @sp.entry_point
+
+  def delegate(self, baker):
+    sp.verify_equal(sp.sender, sp.self_address, "BAD_CALLER")
+
+    sp.set_delegate(baker)
+
+  @sp.entry_point
+  def transfer(self, params):
+    sp.verify_equal(sp.sender, sp.self_address, "BAD_CALLER")
+
+    sp.send(params.destination, params.amount, message = None)
+
+  @sp.entry_point
+  def default(self):
+    pass
 
 ################################################################
 ################################################################
