@@ -225,19 +225,28 @@ class MultiSigTimelock(sp.Contract):
       operations = lambdaToExecute(sp.unit)
       sp.set_type(operations, sp.TList(sp.TOperation))
       sp.add_operations(operations)
-        @sp.entry_point
 
+  ################################################################
+  # Treasury Management
+  ################################################################
+
+  # Delegate this multisig contract's XTZ balance.
+  # Can only be called by the multisig itself.
+  @sp.entry_point
   def delegate(self, baker):
     sp.verify_equal(sp.sender, sp.self_address, "BAD_CALLER")
 
     sp.set_delegate(baker)
 
+  # Transfer part of the multisig contract's XTZ balance.
+  # Can only be called by the multisig itself.
   @sp.entry_point
   def transfer(self, params):
     sp.verify_equal(sp.sender, sp.self_address, "BAD_CALLER")
 
     sp.send(params.destination, params.amount, message = None)
 
+  # Allow multisig to receive XTZ
   @sp.entry_point
   def default(self):
     pass
@@ -1755,3 +1764,113 @@ def test():
   # AND the value was updated.
   scenario.verify(storeContract.data.storedValue == lambdaValue2)  
 
+################################################################
+# default
+################################################################
+
+@sp.add_test(name = "default - able to receive XTZ")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a timelock multisig contract
+  multiSigContract = MultiSigTimelock()
+  scenario += multiSigContract
+
+  # WHEN XTZ is sent to the default entrypoint
+  amount = sp.mutez(1000000)
+  scenario += multiSigContract.default(sp.unit).run(
+    amount = amount
+  )
+
+  # THEN the contract's balance increases
+  scenario.verify(multiSigContract.balance == amount)  
+
+################################################################
+# delegate
+################################################################
+
+@sp.add_test(name = "delegate - can delegate")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a timelock multisig contract with a balance
+  multiSigContract = MultiSigTimelock()
+  multiSigContract.set_initial_balance(sp.mutez(1000000))
+  scenario += multiSigContract
+
+  # WHEN the contract asks itself to delegate
+  baker = sp.some(sp.key_hash("tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf"))
+  scenario += multiSigContract.delegate(baker).run(
+    sender = multiSigContract.address
+  )
+
+  # THEN the contract is delegated
+  scenario.verify(multiSigContract.baker.open_some() == baker.open_some())
+
+@sp.add_test(name = "delegate - fails delegation when called by external party")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a timelock multisig contract with a balance
+  multiSigContract = MultiSigTimelock()
+  multiSigContract.set_initial_balance(sp.mutez(1000000))
+  scenario += multiSigContract
+
+  # WHEN the contract is asked to delegate by an external party
+  # THEN the call reverts.
+  alice = sp.test_account("alice")
+  baker = sp.some(sp.key_hash("tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf"))
+  scenario += multiSigContract.delegate(baker).run(
+    sender = alice.address,
+    valid = False
+  )
+
+################################################################
+# transfer
+################################################################
+
+@sp.add_test(name = "transfer - can transfer balance")
+def test():
+  scenario = sp.test_scenario()
+
+  # GIVEN a timelock multisig contract with a balance
+  multiSigContract = MultiSigTimelock()
+  multiSigContract.set_initial_balance(sp.mutez(1000000))
+  scenario += multiSigContract
+
+  # AND a store contract to receive value
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # WHEN the contract asks itself to transfer XTZ to an external party
+  # THEN the call reverts.
+  amount = sp.mutez(123)
+  scenario += multiSigContract.transfer(sp.record(amount = amount, destination = storeContract.address)).run(
+    sender = multiSigContract.address,
+  )
+
+  # THEN value is transferred
+  scenario.verify(storeContract.balance == amount)
+
+@sp.add_test(name = "transfer - fails when called by external party")
+def test():
+  scenario = sp.test_scenario()
+
+
+  # GIVEN a timelock multisig contract with a balance
+  multiSigContract = MultiSigTimelock()
+  multiSigContract.set_initial_balance(sp.mutez(1000000))
+  scenario += multiSigContract
+
+  # AND a store contract to receive value
+  storeContract = Store.StoreValueContract(value = 0, admin = multiSigContract.address)
+  scenario += storeContract
+
+  # WHEN the an external party asks to transfer XTZ
+  # THEN the call reverts.
+  amount = sp.mutez(123)
+  alice = sp.test_account("alice")
+  scenario += multiSigContract.transfer(sp.record(amount = amount, destination = storeContract.address)).run(
+    sender = alice.address,
+    valid = False
+  )
